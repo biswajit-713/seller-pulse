@@ -3,7 +3,7 @@
 ## Requirements
 
 - Python 3.12
-- [uv](https://docs.astral.sh/uv/)
+- [uv](https://docs.astral.sh/uv/) (optional — see [Without uv](#without-uv))
 
 ## Setup
 
@@ -27,6 +27,22 @@ into an Anthropic-shaped request, and sent to the configured client.
 
 Set `LLM_PROVIDER=anthropic` to select the real client — it is a placeholder and
 currently raises `NotImplementedError`.
+
+## Without uv
+
+Plain venv + pip works too:
+
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate    # Windows: .venv\Scripts\activate
+pip install .
+cp .env.example .env
+python -m seller_pulse
+```
+
+`pip install .` fetches the `uv-build` backend from PyPI, so uv itself is not
+needed on PATH. Note that pip ignores `uv.lock`, so dependencies resolve fresh
+rather than to the pinned versions.
 
 ## Stack
 
