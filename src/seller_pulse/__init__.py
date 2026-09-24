@@ -1,2 +1,4 @@
 def main() -> None:
-    print("Hello from seller-pulse!")
+    from seller_pulse.app import launch
+
+    launch()
