@@ -93,3 +93,4 @@ cython_debug/
 # ChromaDB local persistence
 chroma_data/
 *.sqlite3
+.DS_Store
