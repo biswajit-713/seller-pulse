@@ -1,0 +1,151 @@
+sku,title,category,price_usd,stock_qty,status
+SKU-1001,Boho Wall Hanging - Macrame,Wall Decor,34.99,6,Active
+SKU-1002,Ceramic Table Vase - Ivory,Vases,22.5,0,Out of Stock
+SKU-1003,Rattan Pendant Light Shade,Lighting,58.0,14,Active
+SKU-1004,Linen Throw Pillow Cover Set (2),Textiles,19.99,32,Active
+SKU-1005,Wooden Floating Shelf - Walnut,Shelving,27.75,9,Active
+SKU-1006,Handwoven Jute Area Rug 4x6,Rugs,89.0,3,Low Stock
+SKU-1007,Terracotta Planter Trio,Planters,31.2,21,Active
+SKU-1008,Brass Wall Sconce - Set of 2,Lighting,64.5,0,Out of Stock
+SKU-1009,Cotton Woven Table Runner,Textiles,14.25,40,Active
+SKU-1010,Winter Sherpa Throw Blanket,Textiles,42.0,17,Active
+SKU-1011,Boho Macrame Wall Hanging - Small,Wall Decor,41.66,6,Active
+SKU-1012,Minimalist Stoneware Bud Vase,Vases,22.33,13,Active
+SKU-1013,Industrial Sconce Wall Sconce,Lighting,75.6,0,Active
+SKU-1014,Waffle Cashmere Blend Throw Pillow Cover,Textiles,13.07,2,Low Stock
+SKU-1015,Wooden Walnut Corner Shelf,Shelving,49.69,2,Low Stock
+SKU-1016,Wool Jute Area Rug 4x6,Rugs,93.64,39,Active
+SKU-1017,Woven Macrame Planter Set,Planters,28.58,22,Active
+SKU-1018,Rattan-Framed Bamboo Accent Mirror,Mirrors,30.36,1,Low Stock
+SKU-1019,Textured Soy Wax Candle Trio,Decor Accents,20.99,1,Low Stock
+SKU-1020,Weather-Resistant Rattan Outdoor Planter,Outdoor,76.65,0,Active
+SKU-1021,Boho Macrame Wall Hanging - Large,Wall Decor,31.28,27,Active
+SKU-1022,Fluted Stoneware Bud Vase,Vases,41.44,51,Active
+SKU-1023,Woven Table Lamp Light Shade,Lighting,42.49,0,Out of Stock
+SKU-1024,Woven Wool Blend Throw Pillow Cover,Textiles,22.55,45,Active
+SKU-1025,Floating Walnut Floating Shelf,Shelving,61.64,2,Low Stock
+SKU-1026,Wool Wool Runner Rug 2x8,Rugs,35.03,2,Low Stock
+SKU-1027,Concrete Ceramic Planter Trio,Planters,24.1,10,Active
+SKU-1028,Round Wood Accent Mirror,Mirrors,77.66,3,Low Stock
+SKU-1029,Textured Soy Wax Trinket Dish,Decor Accents,26.53,1,Low Stock
+SKU-1030,Rattan Concrete Wind Chime,Outdoor,43.54,3,Low Stock
+SKU-1031,Woven Rattan Wall Panel,Wall Decor,52.66,0,Out of Stock
+SKU-1032,Ceramic Stoneware Bud Vase,Vases,35.59,39,Active
+SKU-1033,Paper Sconce Light Shade,Lighting,44.8,3,Low Stock
+SKU-1034,Sherpa Cotton Throw Pillow Cover,Textiles,45.31,49,Active
+SKU-1035,Floating Pine Wall Shelf,Shelving,53.49,58,Active
+SKU-1036,Handwoven Wool Area Rug 4x6,Rugs,109.31,3,Low Stock
+SKU-1037,Concrete Ceramic Plant Stand,Planters,21.91,41,Active
+SKU-1038,Arched Rattan Accent Mirror,Mirrors,47.31,46,Active
+SKU-1039,Ceramic Brass Trinket Dish,Decor Accents,33.99,46,Active
+SKU-1040,Woven Concrete Wind Chime,Outdoor,38.57,20,Active
+SKU-1041,Minimalist Metal Tapestry,Wall Decor,37.94,52,Active
+SKU-1042,Fluted Concrete Vase Duo,Vases,44.53,4,Low Stock
+SKU-1043,Woven Pendant Light Shade,Lighting,94.84,13,Active
+SKU-1044,Cotton Cotton Table Runner,Textiles,15.27,8,Active
+SKU-1045,Wooden Pine Corner Shelf,Shelving,29.03,15,Active
+SKU-1046,Jute Cotton Runner Rug 2x8,Rugs,70.64,9,Active
+SKU-1047,Woven Ceramic Plant Stand,Planters,32.68,34,Active
+SKU-1048,Rattan-Framed Bamboo Wall Mirror,Mirrors,83.41,60,Active
+SKU-1049,Woven Rattan Incense Holder,Decor Accents,27.69,12,Active
+SKU-1050,Teak Rattan Patio Cushion Cover,Outdoor,53.53,22,Active
+SKU-1051,Modern Metal Tapestry,Wall Decor,30.59,23,Active
+SKU-1052,Speckled Glass Bud Vase,Vases,29.43,51,Active
+SKU-1053,Woven Floor Lamp Lamp,Lighting,50.8,37,Active
+SKU-1054,Linen Linen Napkin Set,Textiles,30.28,11,Active
+SKU-1055,Corner Oak Floating Shelf,Shelving,35.73,45,Active
+SKU-1056,Tufted Wool Area Rug 4x6,Rugs,48.09,28,Active
+SKU-1057,Woven Ceramic Hanging Planter,Planters,31.1,54,Active
+SKU-1058,Arched Wood Vanity Mirror,Mirrors,80.52,4,Low Stock
+SKU-1059,Soy Wax Ceramic Trinket Dish,Decor Accents,10.51,28,Active
+SKU-1060,Teak All-Weather Wicker Patio Cushion Cover,Outdoor,69.74,2,Low Stock
+SKU-1061,Woven Metal Tapestry,Wall Decor,26.91,41,Active
+SKU-1062,Fluted Glass Bud Vase,Vases,16.91,36,Active
+SKU-1063,Industrial Sconce Light Shade,Lighting,93.68,39,Active
+SKU-1064,Woven Wool Blend Table Runner,Textiles,16.62,35,Active
+SKU-1065,Corner Pine Floating Shelf,Shelving,29.6,38,Active
+SKU-1066,Wool Wool Round Rug,Rugs,70.74,18,Active
+SKU-1067,Ceramic Concrete Planter Trio,Planters,37.15,2,Low Stock
+SKU-1068,Sunburst Bamboo Accent Mirror,Mirrors,65.74,33,Active
+SKU-1069,Ceramic Ceramic Trinket Dish,Decor Accents,21.74,2,Low Stock
+SKU-1070,Weather-Resistant Rattan Patio Cushion Cover,Outdoor,42.59,42,Active
+SKU-1071,Modern Macrame Tapestry,Wall Decor,39.77,0,Out of Stock
+SKU-1072,Minimalist Stoneware Table Vase,Vases,35.46,0,Out of Stock
+SKU-1073,Amber Pendant Pendant Light,Lighting,36.88,0,Out of Stock
+SKU-1074,Embroidered Linen Throw Pillow Cover,Textiles,20.57,47,Active
+SKU-1075,Wooden Metal & Wood Corner Shelf,Shelving,46.8,51,Active
+SKU-1076,Vintage-Style Wool Area Rug 4x6,Rugs,85.68,2,Low Stock
+SKU-1077,Terracotta Concrete Hanging Planter,Planters,29.24,2,Low Stock
+SKU-1078,Minimalist Rattan Vanity Mirror,Mirrors,35.33,4,Low Stock
+SKU-1079,Ceramic Ceramic Incense Holder,Decor Accents,20.69,60,Active
+SKU-1080,Weather-Resistant Teak Wind Chime,Outdoor,61.04,0,Out of Stock
+SKU-1081,Modern Wood Tapestry,Wall Decor,32.9,26,Active
+SKU-1082,Matte Concrete Vase Duo,Vases,17.72,2,Low Stock
+SKU-1083,Amber Floor Lamp Wall Sconce,Lighting,61.92,1,Low Stock
+SKU-1084,Linen Cashmere Blend Throw Pillow Cover,Textiles,28.65,60,Active
+SKU-1085,Industrial Pine Wall Shelf,Shelving,42.38,60,Active
+SKU-1086,Handwoven Wool Round Rug,Rugs,37.89,46,Active
+SKU-1087,Hanging Macrame Planter Trio,Planters,39.41,10,Active
+SKU-1088,Round Wood Wall Mirror,Mirrors,76.68,15,Active
+SKU-1089,Brass Soy Wax Candle Trio,Decor Accents,22.52,60,Active
+SKU-1090,Teak Teak Outdoor Planter,Outdoor,27.22,0,Out of Stock
+SKU-1091,Minimalist Macrame Wall Hanging,Wall Decor,32.45,55,Active
+SKU-1092,Ceramic Stoneware Table Vase,Vases,23.7,49,Active
+SKU-1093,Woven Table Lamp Pendant Light,Lighting,94.73,40,Active
+SKU-1094,Sherpa Cotton Table Runner,Textiles,29.52,3,Low Stock
+SKU-1095,Ladder Metal & Wood Bookshelf,Shelving,66.56,42,Active
+SKU-1096,Jute Jute Area Rug 4x6,Rugs,34.16,0,Out of Stock
+SKU-1097,Woven Macrame Planter Trio,Planters,32.36,37,Active
+SKU-1098,Minimalist Metal Wall Mirror,Mirrors,82.84,10,Active
+SKU-1099,Brass Brass Candle Trio,Decor Accents,11.78,9,Active
+SKU-1100,Rattan All-Weather Wicker Garden Stool,Outdoor,36.94,12,Active
+SKU-1101,Modern Metal Wall Art,Wall Decor,39.08,42,Active
+SKU-1102,Speckled Stoneware Vase Duo,Vases,35.06,31,Active
+SKU-1103,Rattan Sconce Light Shade,Lighting,68.91,25,Active
+SKU-1104,Embroidered Cashmere Blend Table Runner,Textiles,19.35,4,Low Stock
+SKU-1105,Floating Metal & Wood Floating Shelf,Shelving,34.22,13,Active
+SKU-1106,Vintage-Style Recycled Fiber Doormat,Rugs,58.3,25,Active
+SKU-1107,Ceramic Concrete Planter Set,Planters,42.2,5,Active
+SKU-1108,Rattan-Framed Wood Vanity Mirror,Mirrors,84.91,0,Out of Stock
+SKU-1109,Brass Soy Wax Trinket Dish,Decor Accents,19.61,15,Active
+SKU-1110,Teak Rattan Wind Chime,Outdoor,53.88,24,Active
+SKU-1111,Boho Macrame Mirror Frame,Wall Decor,54.53,46,Active
+SKU-1112,Glazed Terracotta Floor Vase,Vases,36.71,3,Low Stock
+SKU-1113,Frosted Pendant Lamp,Lighting,74.8,3,Low Stock
+SKU-1114,Waffle Cotton Napkin Set,Textiles,44.03,52,Active
+SKU-1115,Corner Metal & Wood Floating Shelf,Shelving,34.53,2,Low Stock
+SKU-1116,Vintage-Style Wool Doormat,Rugs,62.63,48,Active
+SKU-1117,Ceramic Ceramic Planter Set,Planters,23.39,3,Low Stock
+SKU-1118,Minimalist Wood Wall Mirror,Mirrors,79.95,0,Out of Stock
+SKU-1119,Brass Ceramic Incense Holder,Decor Accents,21.01,0,Out of Stock
+SKU-1120,Woven All-Weather Wicker Wind Chime,Outdoor,42.35,13,Active
+SKU-1121,Coastal Metal Mirror Frame,Wall Decor,27.69,52,Active
+SKU-1122,Matte Glass Floor Vase,Vases,37.99,0,Out of Stock
+SKU-1123,Amber Sconce Pendant Light,Lighting,39.51,49,Active
+SKU-1124,Waffle Cashmere Blend Throw Blanket,Textiles,31.64,4,Low Stock
+SKU-1125,Walnut Oak Bookshelf,Shelving,47.42,1,Low Stock
+SKU-1126,Wool Cotton Area Rug 4x6,Rugs,118.79,18,Active
+SKU-1127,Hanging Macrame Plant Stand,Planters,34.67,27,Active
+SKU-1128,Rattan-Framed Rattan Accent Mirror,Mirrors,78.63,31,Active
+SKU-1129,Woven Rattan Bookend Set,Decor Accents,29.49,20,Active
+SKU-1130,Teak Teak Patio Cushion Cover,Outdoor,77.69,1,Low Stock
+SKU-1131,Minimalist Macrame Wall Panel,Wall Decor,33.25,16,Active
+SKU-1132,Matte Terracotta Bud Vase,Vases,25.29,31,Active
+SKU-1133,Amber Table Lamp Light Shade,Lighting,86.84,2,Low Stock
+SKU-1134,Woven Cashmere Blend Table Runner,Textiles,17.73,0,Out of Stock
+SKU-1135,Wooden Oak Floating Shelf,Shelving,62.12,59,Active
+SKU-1136,Jute Wool Doormat,Rugs,48.16,4,Low Stock
+SKU-1137,Ceramic Terracotta Planter Trio,Planters,38.98,2,Low Stock
+SKU-1138,Round Metal Vanity Mirror,Mirrors,48.05,0,Out of Stock
+SKU-1139,Ceramic Brass Candle Trio,Decor Accents,30.11,27,Active
+SKU-1140,Woven All-Weather Wicker Outdoor Planter,Outdoor,45.98,58,Active
+SKU-1141,Rustic Metal Tapestry,Wall Decor,52.75,12,Active
+SKU-1142,Minimalist Glass Vase Duo,Vases,22.88,42,Active
+SKU-1143,Woven Table Lamp Wall Sconce,Lighting,50.93,11,Active
+SKU-1144,Embroidered Cashmere Blend Napkin Set,Textiles,24.44,4,Low Stock
+SKU-1145,Oak Metal & Wood Bookshelf,Shelving,49.89,0,Out of Stock
+SKU-1146,Handwoven Recycled Fiber Round Rug,Rugs,118.85,3,Low Stock
+SKU-1147,Ceramic Ceramic Planter Trio,Planters,35.85,5,Active
+SKU-1148,Rattan-Framed Rattan Vanity Mirror,Mirrors,74.36,48,Active
+SKU-1149,Brass Rattan Candle Trio,Decor Accents,29.29,2,Low Stock
+SKU-1150,Rattan Teak Wind Chime,Outdoor,47.72,47,Active

@@ -1,0 +1,112 @@
+review_id,sku,rating,comment,date
+REV-528,SKU-1060,5,"Exceeded my expectations, love it.",2026-08-03
+REV-566,SKU-1047,5,Arrived fast and packaged well.,2026-08-03
+REV-550,SKU-1019,5,"Exceeded my expectations, love it.",2026-08-04
+REV-510,SKU-1049,3,"Pretty, but instructions could be clearer.",2026-08-05
+REV-515,SKU-1068,4,"Sturdy and well made, would buy again.",2026-08-05
+REV-514,SKU-1076,3,"Good quality, took a bit longer to arrive than expected.",2026-08-06
+REV-532,SKU-1098,4,"Sturdy and well made, would buy again.",2026-08-06
+REV-577,SKU-1120,5,"Great quality for the price, very happy.",2026-08-07
+REV-541,SKU-1024,3,Smaller than expected for the price.,2026-08-08
+REV-585,SKU-1086,3,"Does the job, nothing special.",2026-08-08
+REV-603,SKU-1059,5,Looks even better in person.,2026-08-08
+REV-534,SKU-1121,4,Perfect addition to my living room.,2026-08-09
+REV-592,SKU-1039,4,"Exceeded my expectations, love it.",2026-08-09
+REV-529,SKU-1060,5,Looks even better in person.,2026-08-11
+REV-542,SKU-1054,5,Perfect addition to my living room.,2026-08-12
+REV-605,SKU-1150,5,Perfect addition to my living room.,2026-08-12
+REV-558,SKU-1041,5,"Exceeded my expectations, love it.",2026-08-13
+REV-594,SKU-1139,1,"Arrived with minor damage, disappointed.",2026-08-13
+REV-561,SKU-1033,1,Customer service was slow to respond about my order.,2026-08-14
+REV-571,SKU-1014,5,Arrived fast and packaged well.,2026-08-15
+REV-591,SKU-1039,5,"Beautiful piece, exactly as pictured!",2026-08-15
+REV-596,SKU-1044,4,Arrived fast and packaged well.,2026-08-15
+REV-518,SKU-1046,5,Perfect addition to my living room.,2026-08-16
+REV-533,SKU-1013,3,Nice item but color slightly different than photo.,2026-08-16
+REV-597,SKU-1117,5,Perfect addition to my living room.,2026-08-16
+REV-582,SKU-1056,4,"Beautiful piece, exactly as pictured!",2026-08-17
+REV-520,SKU-1095,5,Arrived fast and packaged well.,2026-08-18
+REV-572,SKU-1136,4,Looks even better in person.,2026-08-18
+REV-531,SKU-1098,3,"Does the job, nothing special.",2026-08-19
+REV-535,SKU-1121,4,Arrived fast and packaged well.,2026-08-19
+REV-536,SKU-1146,4,"Exceeded my expectations, love it.",2026-08-19
+REV-588,SKU-1113,5,"Exceeded my expectations, love it.",2026-08-19
+REV-501,SKU-1001,5,"Beautiful and well made, arrived fast!",2026-08-20
+REV-512,SKU-1089,2,Customer service was slow to respond about my order.,2026-08-20
+REV-513,SKU-1087,1,Customer service was slow to respond about my order.,2026-08-20
+REV-581,SKU-1022,1,"Arrived with minor damage, disappointed.",2026-08-20
+REV-586,SKU-1088,1,"Shipping delay again, wish it arrived sooner.",2026-08-20
+REV-599,SKU-1144,5,"Exceeded my expectations, love it.",2026-08-20
+REV-565,SKU-1123,2,Not as sturdy as I hoped.,2026-08-22
+REV-598,SKU-1144,5,Looks even better in person.,2026-08-23
+REV-521,SKU-1095,5,"Sturdy and well made, would buy again.",2026-08-24
+REV-545,SKU-1045,5,"Great quality for the price, very happy.",2026-08-24
+REV-583,SKU-1114,5,"Great quality for the price, very happy.",2026-08-24
+REV-502,SKU-1006,2,Nice rug but delivery took almost 3 weeks.,2026-08-25
+REV-567,SKU-1067,2,Item shown as available but order got cancelled.,2026-08-25
+REV-548,SKU-1061,4,"Exceeded my expectations, love it.",2026-08-26
+REV-584,SKU-1094,3,Smaller than expected for the price.,2026-08-26
+REV-602,SKU-1071,3,"Good quality, took a bit longer to arrive than expected.",2026-08-26
+REV-556,SKU-1108,5,Perfect addition to my living room.,2026-08-27
+REV-503,SKU-1004,4,"Good quality linen, color slightly different than photo.",2026-08-28
+REV-523,SKU-1009,4,"Exceeded my expectations, love it.",2026-08-28
+REV-544,SKU-1017,4,"Sturdy and well made, would buy again.",2026-08-28
+REV-547,SKU-1030,5,Perfect addition to my living room.,2026-08-28
+REV-552,SKU-1025,5,"Great quality for the price, very happy.",2026-08-28
+REV-522,SKU-1104,4,"Great quality for the price, very happy.",2026-08-29
+REV-543,SKU-1017,4,Arrived fast and packaged well.,2026-08-29
+REV-549,SKU-1019,4,Looks even better in person.,2026-08-29
+REV-557,SKU-1102,5,Arrived fast and packaged well.,2026-08-31
+REV-517,SKU-1034,1,Customer service was slow to respond about my order.,2026-09-01
+REV-578,SKU-1064,5,Perfect addition to my living room.,2026-09-01
+REV-504,SKU-1001,3,Cute but smaller than expected for the price.,2026-09-02
+REV-553,SKU-1025,5,"Beautiful piece, exactly as pictured!",2026-09-02
+REV-559,SKU-1143,3,"Does the job, nothing special.",2026-09-02
+REV-564,SKU-1048,4,Arrived fast and packaged well.,2026-09-02
+REV-593,SKU-1039,4,"Great quality for the price, very happy.",2026-09-02
+REV-505,SKU-1008,1,Item shown as available but order got cancelled.,2026-09-03
+REV-509,SKU-1066,5,Perfect addition to my living room.,2026-09-03
+REV-511,SKU-1089,4,Arrived fast and packaged well.,2026-09-03
+REV-568,SKU-1116,4,Perfect addition to my living room.,2026-09-03
+REV-579,SKU-1118,5,"Sturdy and well made, would buy again.",2026-09-03
+REV-606,SKU-1040,3,"Good quality, took a bit longer to arrive than expected.",2026-09-03
+REV-611,SKU-1065,5,Perfect addition to my living room.,2026-09-03
+REV-554,SKU-1147,5,Looks even better in person.,2026-09-05
+REV-595,SKU-1050,5,"Sturdy and well made, would buy again.",2026-09-05
+REV-506,SKU-1010,5,"Super soft and warm, buying another for a gift.",2026-09-06
+REV-530,SKU-1060,1,Customer service was slow to respond about my order.,2026-09-06
+REV-580,SKU-1055,5,"Beautiful piece, exactly as pictured!",2026-09-06
+REV-587,SKU-1088,3,Nice item but color slightly different than photo.,2026-09-06
+REV-526,SKU-1137,5,"Great quality for the price, very happy.",2026-09-07
+REV-560,SKU-1124,2,"Arrived with minor damage, disappointed.",2026-09-07
+REV-524,SKU-1009,5,"Great quality for the price, very happy.",2026-09-08
+REV-507,SKU-1007,4,"Planters are lovely, one had a small chip.",2026-09-09
+REV-570,SKU-1149,4,Arrived fast and packaged well.,2026-09-10
+REV-508,SKU-1006,2,"Shipping delay again, love the rug itself though.",2026-09-11
+REV-519,SKU-1069,5,Arrived fast and packaged well.,2026-09-11
+REV-555,SKU-1108,5,Arrived fast and packaged well.,2026-09-11
+REV-562,SKU-1111,4,Perfect addition to my living room.,2026-09-12
+REV-563,SKU-1048,4,Perfect addition to my living room.,2026-09-12
+REV-574,SKU-1148,5,Looks even better in person.,2026-09-12
+REV-538,SKU-1012,5,"Sturdy and well made, would buy again.",2026-09-13
+REV-546,SKU-1045,5,Arrived fast and packaged well.,2026-09-13
+REV-537,SKU-1070,4,Arrived fast and packaged well.,2026-09-15
+REV-540,SKU-1012,5,Arrived fast and packaged well.,2026-09-15
+REV-610,SKU-1103,2,Not as sturdy as I hoped.,2026-09-17
+REV-608,SKU-1112,5,Looks even better in person.,2026-09-18
+REV-609,SKU-1141,3,"Does the job, nothing special.",2026-09-18
+REV-551,SKU-1135,5,Arrived fast and packaged well.,2026-09-19
+REV-576,SKU-1100,5,Perfect addition to my living room.,2026-09-19
+REV-604,SKU-1059,3,"Does the job, nothing special.",2026-09-20
+REV-516,SKU-1062,4,Perfect addition to my living room.,2026-09-21
+REV-539,SKU-1012,4,"Great quality for the price, very happy.",2026-09-21
+REV-569,SKU-1149,4,"Beautiful piece, exactly as pictured!",2026-09-21
+REV-589,SKU-1075,2,"Shipping delay again, wish it arrived sooner.",2026-09-21
+REV-590,SKU-1075,3,Smaller than expected for the price.,2026-09-21
+REV-600,SKU-1144,4,Looks even better in person.,2026-09-22
+REV-601,SKU-1020,1,Customer service was slow to respond about my order.,2026-09-22
+REV-607,SKU-1040,5,"Sturdy and well made, would buy again.",2026-09-22
+REV-527,SKU-1038,4,"Great quality for the price, very happy.",2026-09-23
+REV-575,SKU-1079,3,"Pretty, but instructions could be clearer.",2026-09-23
+REV-525,SKU-1026,4,"Great quality for the price, very happy.",2026-09-24
+REV-573,SKU-1099,3,Smaller than expected for the price.,2026-09-25
