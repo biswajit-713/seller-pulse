@@ -11,10 +11,11 @@ it to see what stage a given piece of code belongs to (Week 1: RAG + UI only; We
 + MCP + memory; Week 3: guardrails + caching; Week 4: observability + evals).
 
 Currently implemented: the Gradio chat UI and the sanitize → bundle-history → LLM-client
-pipeline, with a stubbed ("fake") LLM client. RAG, tools, memory, and guardrails are not
-wired up yet — the in-progress build sequence lives in `plan/` (the `rag-*` files are the
-active thread). `plan/` is gitignored, so it never shows up in `git diff` or in a commit —
-don't assume its absence from `git status` means it's untracked-and-safe-to-ignore.
+pipeline, calling a real model through LangChain's `ChatGroq`. Tools, memory, and
+guardrails are not wired up yet; RAG ingestion exists (`rag/`) but retrieval is not wired
+into `chat.py` either — the in-progress build sequence lives in `plan/` (the `rag-*` files
+are the active thread). `plan/` is gitignored, so it never shows up in `git diff` or in a
+commit — don't assume its absence from `git status` means it's untracked-and-safe-to-ignore.
 
 ## Workflow
 
@@ -25,7 +26,7 @@ and leave them staged/unstaged for the user to review and commit themselves.
 
 ```bash
 uv sync                          # install/update deps into .venv
-cp .env.example .env             # first-time setup; LLM_PROVIDER=fake needs no API key
+cp .env.example .env             # first-time setup; set GROQ_API_KEY (LLM_PROVIDER=groq)
 uv run python -m seller_pulse    # run the app — Gradio chat at http://localhost:7860
 ```
 
@@ -35,12 +36,11 @@ No lint, format, or test tooling is configured yet (no ruff/pytest in `pyproject
 ## Architecture
 
 Request pipeline, sequenced in `chat.py:respond`: `sanitize.py` → `chat.py:to_messages`
-(Gradio history → Anthropic-shaped messages) → `llm/base.py:LLMClient`. That last piece is
-the seam: a `Protocol` with one method, `complete(*, system, messages)`, deliberately
-mirroring `anthropic.Anthropic().messages.create`'s shape so swapping the fake client for
-the real one is a pass-through, not a translation. `llm/factory.py:get_client` picks
-`FakeLLMClient` or `AnthropicLLMClient` from `Settings.llm_provider`; `AnthropicLLMClient`
-currently raises `NotImplementedError` on purpose — it's an unwired placeholder, not a bug.
+(Gradio history → `{role, content}` messages) → `llm/base.py:LLMClient`. That last piece is
+the seam: a `Protocol` with one method, `complete(*, system, messages)`; `llm/groq_client.py`
+translates that shape into LangChain message objects and calls `ChatGroq`.
+`llm/factory.py:get_client` builds `GroqLLMClient` from `Settings.llm_provider`/
+`groq_api_key`/`groq_model` — `groq` is the only supported provider now.
 
 ### Data
 

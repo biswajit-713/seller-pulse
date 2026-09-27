@@ -37,9 +37,8 @@ class Settings:
 
 
 def load_settings() -> Settings:
-    # "fake" by default so a fresh clone runs without an API key.
     return Settings(
-        llm_provider=os.getenv("LLM_PROVIDER", "fake").strip().lower(),
+        llm_provider=os.getenv("LLM_PROVIDER", "groq").strip().lower(),
         groq_api_key=os.getenv("GROQ_API_KEY") or None,
         groq_model=os.getenv("GROQ_MODEL") or DEFAULT_MODEL,
         server_port=int(os.getenv("SERVER_PORT", "7860")),

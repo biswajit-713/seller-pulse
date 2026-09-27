@@ -13,8 +13,7 @@ cp .env.example .env
 uv run python -m seller_pulse.rag.ingest
 ```
 
-No API key is needed yet — `LLM_PROVIDER` defaults to `fake`, which returns a
-stubbed reply without calling a model.
+Set `GROQ_API_KEY` in `.env` — `LLM_PROVIDER` defaults to `groq`.
 
 The first ingest downloads the embedding model (~80 MB compressed, ~167 MB
 unpacked) to `~/.cache/chroma` and takes 30-60s; later runs take seconds.
@@ -27,10 +26,7 @@ uv run python -m seller_pulse
 
 Opens a chat at http://localhost:7860. Type a natural-language question; the
 message is sanitized, bundled with the system prompt and the conversation so far,
-and sent to the configured client.
-
-Set `LLM_PROVIDER=groq` and `GROQ_API_KEY` to call the real model (via LangChain's
-`ChatGroq`).
+and sent to Groq (via LangChain's `ChatGroq`).
 
 ## Without uv
 

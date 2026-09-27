@@ -1,8 +1,7 @@
 """The seam between the app and whatever actually answers a question.
 
 A separate ``system`` prompt plus an alternating ``messages`` list, translated
-to LangChain message objects inside the real client. Swapping the fake client
-for the real one is then a pass-through, not a translation for callers.
+to LangChain message objects inside the client.
 """
 
 from typing import Literal, Protocol, TypedDict
