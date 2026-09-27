@@ -94,3 +94,12 @@ cython_debug/
 chroma_data/
 *.sqlite3
 .DS_Store
+
+# Working notes
+plan/
+
+# Local vector store (rebuild with: uv run python -m seller_pulse.rag.ingest)
+data/chroma/
+
+# Chroma telemetry session id, dropped in cwd
+:memory:.ses
