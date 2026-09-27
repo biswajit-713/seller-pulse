@@ -10,10 +10,14 @@
 ```bash
 uv sync
 cp .env.example .env
+uv run python -m seller_pulse.rag.ingest
 ```
 
 No API key is needed yet — `LLM_PROVIDER` defaults to `fake`, which returns a
 stubbed reply without calling a model.
+
+The first ingest downloads the embedding model (~80 MB compressed, ~167 MB
+unpacked) to `~/.cache/chroma` and takes 30-60s; later runs take seconds.
 
 ## Run
 
@@ -35,14 +39,14 @@ Plain venv + pip works too:
 ```bash
 python3.12 -m venv .venv
 source .venv/bin/activate    # Windows: .venv\Scripts\activate
-pip install .
+pip install -e .
 cp .env.example .env
 python -m seller_pulse
 ```
 
-`pip install .` fetches the `uv-build` backend from PyPI, so uv itself is not
-needed on PATH. Note that pip ignores `uv.lock`, so dependencies resolve fresh
-rather than to the pinned versions.
+`pip install -e .` fetches the `uv-build` backend from PyPI, so uv itself is
+not needed on PATH. Note that pip ignores `uv.lock`, so dependencies resolve
+fresh rather than to the pinned versions.
 
 ## Stack
 
