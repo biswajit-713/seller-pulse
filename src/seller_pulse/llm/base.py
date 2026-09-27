@@ -1,8 +1,8 @@
 """The seam between the app and whatever actually answers a question.
 
-The signature deliberately mirrors ``anthropic.Anthropic().messages.create``:
-a separate ``system`` prompt plus an alternating ``messages`` list. Swapping the
-fake client for the real one is then a pass-through, not a translation.
+A separate ``system`` prompt plus an alternating ``messages`` list, translated
+to LangChain message objects inside the real client. Swapping the fake client
+for the real one is then a pass-through, not a translation for callers.
 """
 
 from typing import Literal, Protocol, TypedDict

@@ -26,11 +26,11 @@ uv run python -m seller_pulse
 ```
 
 Opens a chat at http://localhost:7860. Type a natural-language question; the
-message is sanitized, bundled with the system prompt and the conversation so far
-into an Anthropic-shaped request, and sent to the configured client.
+message is sanitized, bundled with the system prompt and the conversation so far,
+and sent to the configured client.
 
-Set `LLM_PROVIDER=anthropic` to select the real client — it is a placeholder and
-currently raises `NotImplementedError`.
+Set `LLM_PROVIDER=groq` and `GROQ_API_KEY` to call the real model (via LangChain's
+`ChatGroq`).
 
 ## Without uv
 
@@ -51,7 +51,7 @@ fresh rather than to the pinned versions.
 ## Stack
 
 - **gradio** — UI
-- **anthropic** — Claude API client
+- **langchain-groq** — Groq API client
 - **chromadb** — vector store
 - **python-dotenv** — loads secrets from `.env`
 - CSV reading via the standard library `csv` module

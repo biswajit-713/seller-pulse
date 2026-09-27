@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DEFAULT_MODEL = "claude-haiku-4-5-20251001"
+DEFAULT_MODEL = "openai/gpt-oss-120b"
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]  # verified: reaches the repo root
 DATA_DIR = PROJECT_ROOT / "data"
@@ -29,8 +29,8 @@ DEFAULT_SELLER_ID = "SELLER-001"
 @dataclass(frozen=True)
 class Settings:
     llm_provider: str
-    anthropic_api_key: str | None
-    anthropic_model: str
+    groq_api_key: str | None
+    groq_model: str
     server_port: int
     chroma_path: Path
     seller_id: str
@@ -40,8 +40,8 @@ def load_settings() -> Settings:
     # "fake" by default so a fresh clone runs without an API key.
     return Settings(
         llm_provider=os.getenv("LLM_PROVIDER", "fake").strip().lower(),
-        anthropic_api_key=os.getenv("ANTHROPIC_API_KEY") or None,
-        anthropic_model=os.getenv("ANTHROPIC_MODEL") or DEFAULT_MODEL,
+        groq_api_key=os.getenv("GROQ_API_KEY") or None,
+        groq_model=os.getenv("GROQ_MODEL") or DEFAULT_MODEL,
         server_port=int(os.getenv("SERVER_PORT", "7860")),
         chroma_path=Path(os.getenv("CHROMA_PATH") or DEFAULT_CHROMA_PATH),
         seller_id=os.getenv("SELLER_ID") or DEFAULT_SELLER_ID,
