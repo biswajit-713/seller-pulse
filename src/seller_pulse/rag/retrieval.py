@@ -14,15 +14,37 @@ as "perfect semantic match" to every downstream consumer, including the harness 
 Review ids come from Chroma's `ids`, not from metadata — `rag/ingest.py` writes
 `{seller_id, sku, rating, date, title}`, no `review_id` key. Policy chunks additionally carry
 `chunk_id` in metadata (`rag/policy.py`), but `Hit.id` is populated from `ids` in both cases.
+
+`Retriever.retrieve()` runs policy and review similarity search on *every* question,
+unconditionally — only the statistics path is gated on `_STATS_HINTS`. A keyword router that
+skipped policy search on "no policy vocabulary" questions would drop the policy chunk on exactly
+the queries where a seller is unknowingly asking to break a rule: SQ-14 ("add trending keywords
+to titles so they rank higher") and SQ-25 ("say it's handmade from organic fibres and ships next
+day") are both policy questions with no policy vocabulary at all. Retrieving unconditionally
+costs one HNSW probe over 6 policy chunks and one over 111 reviews (~80ms warm) — cheap next to
+that failure mode. An irrelevant policy chunk reaching the prompt is handled by the prompt
+(cite a section only if it bears on the question), not by a keyword list that is wrong in both
+directions.
+
+The stats path is gated because it is a cost-and-shape question, not a relevance one: `compute()`
+renders all 111 reviews into a per-SKU table, which would dominate the context block for a
+question that has nothing to do with aggregates. Missing the hint just falls back to a normal
+review search — a reasonable answer, not a wrong one.
 """
 
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any
+from enum import StrEnum
+from typing import TYPE_CHECKING, Any
 
 from chromadb.api import ClientAPI
 
-from seller_pulse.rag.store import policy_collection, review_collection
+from seller_pulse.rag.store import get_client, policy_collection, review_collection, warm_embedder
+
+if TYPE_CHECKING:
+    from seller_pulse.config import Settings
+    from seller_pulse.rag.stats import ReviewStats
 
 POLICY_K = 2
 REVIEW_K = 6
@@ -128,3 +150,62 @@ class PolicyStore:
     def get(self, chunk_ids: Sequence[str]) -> list[Hit]:
         result = self._collection.get(ids=list(chunk_ids))
         return _get_hits(result, citation_fn=_policy_citation)
+
+
+_STATS_HINTS = frozenset(
+    "complain complaining complaint complaints worst best most least common commonly "
+    "themes theme overall average typically ranking".split()
+)
+
+
+class Route(StrEnum):
+    STATS = "stats"  # aggregate question -> add computed statistics
+    GENERAL = "general"  # policy + review similarity only
+
+
+def classify(question: str) -> Route:
+    tokens = set(re.findall(r"[a-z']+", question.casefold()))
+    if tokens & _STATS_HINTS:
+        return Route.STATS
+    return Route.GENERAL
+
+
+@dataclass(frozen=True)
+class RetrievalResult:
+    route: Route
+    question: str
+    reviews: tuple[Hit, ...] = ()
+    policy: tuple[Hit, ...] = ()
+    stats: "ReviewStats | None" = None
+
+    @property
+    def is_empty(self) -> bool:
+        return not self.reviews and not self.policy and self.stats is None
+
+
+class Retriever:
+    def __init__(self, *, reviews: ReviewStore, policy: PolicyStore) -> None:
+        self._reviews = reviews
+        self._policy = policy
+
+    def retrieve(self, question: str) -> RetrievalResult:
+        from seller_pulse.rag.stats import compute
+
+        route = classify(question)
+        return RetrievalResult(
+            route=route,
+            question=question,
+            reviews=tuple(self._reviews.search(question)),
+            policy=tuple(self._policy.search(question)),
+            stats=compute(self._reviews) if route is Route.STATS else None,
+        )
+
+
+def build_retriever(settings: "Settings") -> Retriever:
+    client = get_client(settings.chroma_path)
+    retriever = Retriever(
+        reviews=ReviewStore(client, seller_id=settings.seller_id),
+        policy=PolicyStore(client),
+    )
+    warm_embedder()
+    return retriever

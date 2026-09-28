@@ -51,3 +51,12 @@ def review_collection(client: ClientAPI) -> Collection:
         metadata={"hnsw:space": "cosine"},
         embedding_function=_embedding_function,
     )
+
+
+def warm_embedder() -> None:
+    """Force the lazy ONNX model load now, so the first user question doesn't pay for it.
+
+    `DefaultEmbeddingFunction()` is instantiated above at import time, but the ONNX model
+    itself loads lazily on first `__call__` — a 1-3s stall. Call this once at startup.
+    """
+    _embedding_function(["warm up"])
