@@ -56,3 +56,12 @@ def get_listing(sku: str) -> Listing | None:
     An absent SKU is a valid answer, not an error condition.
     """
     return _LISTINGS.get(sku)
+
+
+def catalog_size() -> int:
+    """Return the number of SKUs in the catalog.
+
+    The denominator `rag/stats.py` needs for "N of the catalog have no reviews" — the review
+    store only knows how many SKUs *have* reviews, not how many exist.
+    """
+    return len(_LISTINGS)
