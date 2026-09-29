@@ -24,6 +24,7 @@ DEFAULT_REVIEWS_PATH = DATA_DIR / "reviews.csv"
 DEFAULT_POLICY_PATH = DATA_DIR / "policy" / "seller_policy_handbook.md"
 DEFAULT_CHROMA_PATH = DATA_DIR / "chroma"
 DEFAULT_SELLER_ID = "SELLER-001"
+DEFAULT_RETRIEVAL_CASES_PATH = DATA_DIR / "synthetic_queries" / "retrieval_cases.jsonl"
 
 
 @dataclass(frozen=True)

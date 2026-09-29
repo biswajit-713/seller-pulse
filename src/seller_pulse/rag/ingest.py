@@ -14,7 +14,6 @@ from pathlib import Path
 from chromadb.api import ClientAPI
 
 from seller_pulse.config import (
-    DEFAULT_CHROMA_PATH,
     DEFAULT_LISTINGS_PATH,
     DEFAULT_POLICY_PATH,
     DEFAULT_REVIEWS_PATH,
@@ -35,10 +34,13 @@ def ingest_policy(client: ClientAPI, policy_path: Path = DEFAULT_POLICY_PATH) ->
     return len(chunks)
 
 
-def ingest_reviews(client: ClientAPI, *, reviews_path: Path = DEFAULT_REVIEWS_PATH) -> int:
+def ingest_reviews(
+    client: ClientAPI, *, reviews_path: Path = DEFAULT_REVIEWS_PATH
+) -> tuple[int, set[str]]:
     ids: list[str] = []
     documents: list[str] = []
     metadatas: list[dict[str, str | int]] = []
+    seller_ids: set[str] = set()
 
     with open(reviews_path, newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
@@ -68,27 +70,27 @@ def ingest_reviews(client: ClientAPI, *, reviews_path: Path = DEFAULT_REVIEWS_PA
                     "title": title,
                 }
             )
+            seller_ids.add(row["seller_id"])
 
     review_collection(client).upsert(ids=ids, documents=documents, metadatas=metadatas)
-    return len(ids)
+    return len(ids), seller_ids
 
 
 def main() -> None:
-    client = get_client()
+    settings = load_settings()
+    client = get_client(settings.chroma_path)
 
     policy_count = ingest_policy(client)
-    review_count = ingest_reviews(client)
+    review_count, seller_ids = ingest_reviews(client)
 
     with open(DEFAULT_LISTINGS_PATH, newline="", encoding="utf-8") as f:
         catalog_count = sum(1 for _ in csv.DictReader(f))
 
-    seller_id = load_settings().seller_id
-
     print(f"policy_kb      : {policy_count} chunks (global, no tenant key)")
-    print(f"seller_reviews : {review_count} chunks (seller_id={seller_id})")
+    print(f"seller_reviews : {review_count} chunks (seller_id={', '.join(sorted(seller_ids))})")
     print(f"catalog        : {catalog_count} listings (structured, not embedded)")
     print()
-    print(f"vector store at {DEFAULT_CHROMA_PATH}")
+    print(f"vector store at {settings.chroma_path}")
 
 
 if __name__ == "__main__":
