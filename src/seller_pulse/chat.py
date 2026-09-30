@@ -4,6 +4,8 @@ from typing import Any
 
 from seller_pulse.llm.base import LLMClient, Message
 from seller_pulse.prompts import SYSTEM_PROMPT
+from seller_pulse.rag.context import render_context
+from seller_pulse.rag.retrieval import Retriever
 from seller_pulse.sanitize import sanitize
 
 EMPTY_INPUT_REPLY = "Type a question about your seller data and I'll take a look."
@@ -30,7 +32,13 @@ def to_messages(history: list[dict[str, Any]] | None) -> list[Message]:
     return messages
 
 
-def respond(message: str, history: list[dict[str, Any]] | None, client: LLMClient) -> str:
+def respond(
+    message: str,
+    history: list[dict[str, Any]] | None,
+    *,
+    client: LLMClient,
+    retriever: Retriever,
+) -> str:
     clean = sanitize(message)
     if not clean:
         return EMPTY_INPUT_REPLY
@@ -38,4 +46,5 @@ def respond(message: str, history: list[dict[str, Any]] | None, client: LLMClien
     messages: list[Message] = to_messages(history)
     messages.append({"role": "user", "content": clean})
 
-    return client.complete(system=SYSTEM_PROMPT, messages=messages)
+    system = f"{SYSTEM_PROMPT}\n\n{render_context(retriever.retrieve(clean))}"
+    return client.complete(system=system, messages=messages)
