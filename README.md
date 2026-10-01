@@ -51,3 +51,32 @@ fresh rather than to the pinned versions.
 - **chromadb** — vector store
 - **python-dotenv** — loads secrets from `.env`
 - CSV reading via the standard library `csv` module
+
+## Retrieval Statistics (in progress — cases grow over the coming weeks)
+
+```bash
+uv run python -m seller_pulse.rag.evaluate
+```
+
+Scores the vector store against 10 cases in `data/synthetic_queries/retrieval_cases.jsonl` and
+prints each case's query, the full top-k retrieved ids with distances, and a pass/fail verdict —
+the log is the deliverable, there is no quiet mode. Expected last line: `RESULT: PASS`
+(`10/10 cases      target >= 9/10`). Run it after ingesting, and any time the corpus, chunking,
+or embedding config changes, to catch a retrieval regression before it reaches the chat UI.
+
+No LLM call, no network beyond the local Chroma store, and no `GROQ_API_KEY` needed — it embeds
+queries with the same store-bound embedding function `rag/ingest.py` used, so the score reflects
+the vector store itself, not a model's phrasing of the answer.
+
+Exit codes:
+
+| Code | Meaning |
+|---|---|
+| `0` | Scored pass rate ≥ 9/10. |
+| `1` | Below threshold — the retrieval metric regressed. |
+| `2` | Could not run at all — `data/chroma/` is missing or empty (run the ingest command first), or a case references an id that doesn't exist in the store. |
+
+Pass `--json` to emit one JSON object per case instead of the human-readable log, for scripting
+or a baseline report. See [`docs/retrieval.md`](docs/retrieval.md) for the measured scores and
+what the five Tier 1 queries this checks actually cover, and
+[`docs/verification.md`](docs/verification.md) for the manual verification pass this feeds into.
