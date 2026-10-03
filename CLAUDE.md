@@ -55,5 +55,5 @@ guardrail/RAG layers; the source doc is `docs/seller_policy_handbook.pdf`.
 Two listings (SKU-1013, SKU-1020) are intentionally inconsistent — `stock_qty` 0 but
 `status: Active` — seeding the "still-active listing after stock ran out" case that a
 policy rule and specific reviews depend on. Do not "fix" this data without reading
-`plan/01-data-fix.md` and `plan/rag-03-seller-id-column.md` first; it's a deliberate test
+`plan/rag-03-seller-id-column.md` first; it's a deliberate test
 fixture.
