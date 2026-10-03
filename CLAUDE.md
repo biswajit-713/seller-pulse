@@ -28,10 +28,12 @@ and leave them staged/unstaged for the user to review and commit themselves.
 uv sync                          # install/update deps into .venv
 cp .env.example .env             # first-time setup; set GROQ_API_KEY (LLM_PROVIDER=groq)
 uv run python -m seller_pulse    # run the app — Gradio chat at http://localhost:7860
+uv run pytest                    # run tests (dev group: pytest, pytest-asyncio; asyncio_mode=auto)
 ```
 
-No lint, format, or test tooling is configured yet (no ruff/pytest in `pyproject.toml`, no
-`tests/` directory) — don't assume `uv run pytest` or similar exists.
+No lint or format tooling is configured yet (no ruff in `pyproject.toml`) — don't assume
+`uv run ruff` or similar exists. Tests live in `tests/` and must not hit the network or need
+an API key — anything that would call Groq uses a fake.
 
 ## Architecture
 
