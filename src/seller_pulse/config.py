@@ -21,6 +21,7 @@ if not DATA_DIR.is_dir():
 
 DEFAULT_LISTINGS_PATH = DATA_DIR / "listings.csv"
 DEFAULT_REVIEWS_PATH = DATA_DIR / "reviews.csv"
+DEFAULT_SALES_PATH = DATA_DIR / "sales.csv"
 DEFAULT_POLICY_PATH = DATA_DIR / "policy" / "seller_policy_handbook.md"
 DEFAULT_CHROMA_PATH = DATA_DIR / "chroma"
 DEFAULT_RETRIEVAL_CASES_PATH = DATA_DIR / "synthetic_queries" / "retrieval_cases.jsonl"
