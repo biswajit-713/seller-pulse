@@ -23,7 +23,6 @@ DEFAULT_LISTINGS_PATH = DATA_DIR / "listings.csv"
 DEFAULT_REVIEWS_PATH = DATA_DIR / "reviews.csv"
 DEFAULT_POLICY_PATH = DATA_DIR / "policy" / "seller_policy_handbook.md"
 DEFAULT_CHROMA_PATH = DATA_DIR / "chroma"
-DEFAULT_SELLER_ID = "SELLER-001"
 DEFAULT_RETRIEVAL_CASES_PATH = DATA_DIR / "synthetic_queries" / "retrieval_cases.jsonl"
 
 
@@ -38,11 +37,17 @@ class Settings:
 
 
 def load_settings() -> Settings:
+    # Stand-in for auth (prototype only): the tenant comes from env, not a login.
+    # No default: a fallback tenant would silently serve one seller's data to a
+    # misconfigured process. See docs/tools.md §1.
+    seller_id = (os.getenv("SELLER_ID") or "").strip()
+    if not seller_id:
+        raise ValueError("SELLER_ID is not set. Set it in .env (e.g. SELLER_ID=SELLER-001).")
     return Settings(
         llm_provider=os.getenv("LLM_PROVIDER", "groq").strip().lower(),
         groq_api_key=os.getenv("GROQ_API_KEY") or None,
         groq_model=os.getenv("GROQ_MODEL") or DEFAULT_MODEL,
         server_port=int(os.getenv("SERVER_PORT", "7860")),
         chroma_path=Path(os.getenv("CHROMA_PATH") or DEFAULT_CHROMA_PATH),
-        seller_id=os.getenv("SELLER_ID") or DEFAULT_SELLER_ID,
+        seller_id=seller_id,
     )

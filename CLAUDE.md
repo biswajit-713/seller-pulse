@@ -26,7 +26,7 @@ and leave them staged/unstaged for the user to review and commit themselves.
 
 ```bash
 uv sync                          # install/update deps into .venv
-cp .env.example .env             # first-time setup; set GROQ_API_KEY (LLM_PROVIDER=groq)
+cp .env.example .env             # first-time setup; set GROQ_API_KEY (LLM_PROVIDER=groq) and SELLER_ID (required)
 uv run python -m seller_pulse    # run the app — Gradio chat at http://localhost:7860
 uv run pytest                    # run tests (dev group: pytest, pytest-asyncio; asyncio_mode=auto)
 ```
