@@ -45,7 +45,6 @@ class Case:
     source_query: str | None
     assertions: tuple[dict[str, Any], ...]
     margin_watch: dict[str, Any] | None
-    why: str
 
 
 @dataclass(frozen=True)
@@ -104,7 +103,6 @@ def load_cases(cases_path: Path, queries_path: Path) -> list[Case]:
                     source_query=source_query,
                     assertions=tuple(raw["assertions"]),
                     margin_watch=raw.get("margin_watch"),
-                    why=raw.get("why", ""),
                 )
             )
     return cases

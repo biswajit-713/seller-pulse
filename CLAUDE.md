@@ -10,11 +10,12 @@ Iyer, ~150-SKU home-decor store). Full spec: `docs/requirements.md`; narrative r
 it to see what stage a given piece of code belongs to (Week 1: RAG + UI only; Week 2: tools
 + MCP + memory; Week 3: guardrails + caching; Week 4: observability + evals).
 
-Currently implemented: the Gradio chat UI and the sanitize → bundle-history → LLM-client
-pipeline, calling a real model through LangChain's `ChatGroq`. Tools, memory, and
-guardrails are not wired up yet; RAG ingestion exists (`rag/`) but retrieval is not wired
-into `chat.py` either — the in-progress build sequence lives in `plan/` (the `rag-*` files
-are the active thread). `plan/` is gitignored, so it never shows up in `git diff` or in a
+Currently implemented: the Gradio chat UI; RAG ingestion + retrieval (`rag/`), whose
+context is injected into the system prompt; and a tool-calling loop (`agent.py`) over two
+local tools (`get_sales_analytics`, `check_inventory_status`), calling a real model through
+LangChain's `ChatGroq`. MCP, memory, and guardrails are not wired up yet — the in-progress
+build sequence lives in `plan/` (`STATUS.md` + the `w2-*` files are the active thread).
+`plan/` is gitignored, so it never shows up in `git diff` or in a
 commit — don't assume its absence from `git status` means it's untracked-and-safe-to-ignore.
 
 ## Workflow
@@ -38,9 +39,12 @@ an API key — anything that would call Groq uses a fake.
 ## Architecture
 
 Request pipeline, sequenced in `chat.py:respond`: `sanitize.py` → `chat.py:to_messages`
-(Gradio history → `{role, content}` messages) → `llm/base.py:LLMClient`. That last piece is
-the seam: a `Protocol` with one method, `complete(*, system, messages)`; `llm/groq_client.py`
-translates that shape into LangChain message objects and calls `ChatGroq`.
+(Gradio history → `{role, content}` messages) → `rag/retrieval.py` + `rag/context.py`
+(retrieved context appended to `prompts.py:SYSTEM_PROMPT`) → `agent.py:run_agent` (async
+model → tool calls → results loop; tools built in `tools.py`, which wraps `sales.py` and
+`inventory.py`). The LLM seam is `llm/base.py:LLMClient`, a `Protocol` exposing one
+property, `chat_model` (a LangChain `BaseChatModel`, for `bind_tools`); `agent.py` owns the
+`Message` → LangChain translation. `llm/groq_client.py` builds `ChatGroq` lazily.
 `llm/factory.py:get_client` builds `GroqLLMClient` from `Settings.llm_provider`/
 `groq_api_key`/`groq_model` — `groq` is the only supported provider now.
 
