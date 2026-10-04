@@ -5,8 +5,8 @@
 
 Week 1 (tasks 1–11) is done, including task 1 (`docs/team.md`). Week 2: tasks 12–14 are done —
 `docs/tools.md` spec, `sales.py:get_sales_analytics`, `inventory.py:check_inventory_status`,
-LangChain wrappers in `tools.py`, and the async tool loop in `agent.py`, all covered by pytest
-(52/52). The loop is not yet wired into `chat.py`/the Gradio UI, so tools aren't live in chat.
+LangChain wrappers in `tools.py`, the async tool loop in `agent.py`, and a system prompt that
+requires tool-sourced figures (`prompts.py`), all covered by pytest (52/52). The loop is not yet wired into `chat.py`/the Gradio UI, so tools aren't live in chat.
 Tasks 15–18 (MCP, memory, trace panel) and all of Weeks 3–4 (tasks 19–34) are not started. Status is tracked per task in the tables
 below; a finer-grained, file-level breakdown lives in `plan/STATUS.md` (gitignored, local
 only).
@@ -36,7 +36,7 @@ only).
 | 12 | Design tool specs: `get_sales_analytics(seller_id, period)` and `check_inventory_status(sku)` | Written spec for both tools: inputs, outputs, error cases | `docs/tools.md` with both signatures and example input/output | Done |
 | 13 | Implement the sales-analytics tool | Returns correct revenue/units/orders for a known period and a clear error for an invalid one | Test log showing both cases | Done — `tests/test_period.py` + `tests/test_sales_analytics.py` (SQ-01/SQ-17 figures); not yet live in chat |
 | 14 | Implement the inventory-status tool | Returns correct stock level for a known SKU and a clear error for an unknown one | Test log showing both cases | Done — `tests/test_inventory_status.py` + `tests/test_tools.py` (LangChain wrapper); MCP exposure is task 15 |
-| 15 | Set up MCP to expose both tools to the agent; test a full round trip | Agent calls both tools via MCP and uses their results in a live response | Trace/log of one query showing the response built from tool output | Not started — prep done: async tool loop `agent.py` (`tests/test_agent_loop.py`); chat wiring + MCP server/client pending |
+| 15 | Set up MCP to expose both tools to the agent; test a full round trip | Agent calls both tools via MCP and uses their results in a live response | Trace/log of one query showing the response built from tool output | Not started — prep done: async tool loop `agent.py` (`tests/test_agent_loop.py`), tool-aware prompt; chat wiring + MCP server/client pending |
 | 16 | Design the memory schema: notification cadence, reply tone, and restock threshold preferences | Schema documented; a record can be written and read back correctly | Schema doc + log of one record written and retrieved | Not started |
 | 17 | Integrate memory; test preference recall (e.g., "notify me every Friday about low best-sellers") across 2 sessions | Preference stated in session 1 is correctly recalled, unprompted, in session 2 | Transcripts of both sessions showing the preference and its recall | Not started |
 | 18 | Wire tools and memory into the Gradio UI via an expandable "agent trace" panel | Panel lists each tool call and the recalled preferences for the response | Screenshot of the panel expanded on a real query | Not started |
