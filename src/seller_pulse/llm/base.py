@@ -1,10 +1,12 @@
 """The seam between the app and whatever actually answers a question.
 
-A separate ``system`` prompt plus an alternating ``messages`` list, translated
-to LangChain message objects inside the client.
+The client hands out a LangChain chat model; `agent.run_agent` binds tools to it and owns the
+`Message` → LangChain translation.
 """
 
 from typing import Literal, Protocol, TypedDict
+
+from langchain_core.language_models import BaseChatModel
 
 
 class Message(TypedDict):
@@ -13,6 +15,7 @@ class Message(TypedDict):
 
 
 class LLMClient(Protocol):
-    def complete(self, *, system: str, messages: list[Message]) -> str:
-        """Return the assistant's reply to the final message in ``messages``."""
+    @property
+    def chat_model(self) -> BaseChatModel:
+        """The underlying chat model, for `bind_tools`."""
         ...

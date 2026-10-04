@@ -40,7 +40,6 @@ def _error(code: str, message: str) -> dict:
     return {"ok": False, "error": {"code": code, "message": message}}
 
 
-# Duplicates groq_client.py's translation until w2-09 moves it here.
 def _to_langchain(system: str, messages: list[Message]) -> list[BaseMessage]:
     lc_messages: list[BaseMessage] = [SystemMessage(content=system)]
     for message in messages:

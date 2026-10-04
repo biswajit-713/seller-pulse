@@ -1,32 +1,22 @@
-"""The real LLM call, via LangChain's Groq chat model.
+"""The real LLM, via LangChain's Groq chat model.
 
 Nothing is constructed at import time, so importing this module is safe without
-an API key. The client is built lazily on first ``complete()``.
+an API key. The model is built lazily on first ``chat_model`` access.
 """
 
-from seller_pulse.llm.base import Message
+from langchain_core.language_models import BaseChatModel
 
 
 class GroqLLMClient:
     def __init__(self, *, api_key: str | None, model: str) -> None:
         self.api_key = api_key
         self.model = model
-        self._chat = None
+        self._chat: BaseChatModel | None = None
 
-    def _get_chat(self):
+    @property
+    def chat_model(self) -> BaseChatModel:
         if self._chat is None:
             from langchain_groq import ChatGroq
 
             self._chat = ChatGroq(model=self.model, api_key=self.api_key)
         return self._chat
-
-    def complete(self, *, system: str, messages: list[Message]) -> str:
-        from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-
-        lc_messages = [SystemMessage(content=system)]
-        for message in messages:
-            cls = HumanMessage if message["role"] == "user" else AIMessage
-            lc_messages.append(cls(content=message["content"]))
-
-        response = self._get_chat().invoke(lc_messages)
-        return response.content

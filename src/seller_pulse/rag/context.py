@@ -6,7 +6,7 @@ a method on `RetrievalResult`.
 
 The block goes into the `system` string for the current turn, not into a user message: Gradio
 replays history verbatim on every turn, so a block glued into the user message would accumulate
-one stale `<retrieved_context>` per prior turn. `LLMClient.complete` takes a fresh `system` per
+one stale `<retrieved_context>` per prior turn. `run_agent` takes a fresh `system` per
 call, so gluing it there means exactly one block is ever visible, and it is always the current
 question's.
 
