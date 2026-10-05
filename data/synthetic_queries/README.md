@@ -54,12 +54,42 @@ Three pairs are deliberate A/B contrasts and should be graded together: `SQ-04`/
 (same query, tool works vs times out), `SQ-03`/`SQ-23` (customer-facing draft vs internal
 note), and `SQ-05`/`SQ-22` (threshold set, then changed).
 
+## Agent eval cases
+
+[`agent_cases.jsonl`](agent_cases.jsonl) drives the live end-to-end agent eval
+(`plan/ev-00-overview.md`). Like `retrieval_cases.jsonl`, each line points at a query by
+`source_query` and never copies its text — `query`, `query_context`, `expected_behavior`,
+`expected_answer` and `notes` are joined from `queries.jsonl` at load time.
+
+| Field | Meaning |
+|---|---|
+| `id` | `AE-01` … `AE-18` |
+| `source_query` | the `SQ-` id in `queries.jsonl` |
+| `status` | `scored` (counts toward the 80% threshold) or `known_gap` (runs and is reported, not scored) |
+| `bucket` | `sales` \| `guardrail` \| `rag_draft` — for per-bucket rates |
+| `checks` | deterministic checks — see below; empty means judge-only, and `why` says so |
+| `traceable_allow` | optional — values legitimately absent from every source, each with a `why` |
+| `why` | one line: what the case proves (for `known_gap`, the missing capability) |
+
+Check kinds: `tool_called` (≥1 call to `name`; each listed `args` value must be in its accepted
+list), `no_tool_called` (`name`, or any tool if omitted, never called), `contains_all` (every
+needle in the answer), `contains_any` (at least one `groups` entry present in full — for
+accepted alternate anchorings), `not_contains_pattern` (regex must not match). Each check
+scores one dimension — `tool_use`, `accuracy` or `grounded` — defaulting by kind
+(`tool_*` → `tool_use`, `contains_*` → `accuracy`, `not_contains_pattern` → `grounded`),
+overridable with `"dimension"`. The fourth dimension, `behavior`, is judge-only. An automatic
+`traceable` check (every ID and number in the answer must appear in the tool trace, retrieved
+context or query) runs on every case and is never written here.
+
+Every figure or ID needle comes from its query's `expected_answer` or `references`.
+
 ## Anchoring
 
 The data runs `2026-08-03` → `2026-09-25`; the assistant "today" assumed throughout is
 `2026-09-27`. Relative-time queries (`SQ-01` "last week", `SQ-17` "yesterday") state the
-absolute window in the expected answer, and `SQ-01` lists the trailing-7-day figures as an
-accepted alternate reading.
+absolute window in the expected answer, and `SQ-01` lists the trailing-7-day figures (the
+tool's `last_7_days`, `2026-09-20..09-26`, 6 of 7 days recorded) as an accepted alternate
+reading.
 
 ## Deliberate fixtures
 
