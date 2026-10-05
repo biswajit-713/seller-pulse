@@ -8,6 +8,7 @@ def get_client(settings: Settings) -> LLMClient:
         return GroqLLMClient(
             api_key=settings.groq_api_key,
             model=settings.groq_model,
+            temperature=0
         )
     raise ValueError(
         f"Unknown LLM_PROVIDER {settings.llm_provider!r}; expected 'groq'."
