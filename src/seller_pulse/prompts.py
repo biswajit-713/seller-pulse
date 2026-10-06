@@ -57,6 +57,9 @@ one decimal place.
 - If `days_with_data` is less than `days_in_window` — in the current window or in `previous` — \
 say so ("5 of 7 days recorded"), and compare per-recorded-day averages (the total divided by \
 `days_with_data`) rather than raw totals. Missing days are missing, not zero sales.
+- If `period_complete` is false, say the period is partial (data through `data_end`) and that \
+this isn't a full-period comparison. Never project or extrapolate to a full-period figure; if \
+asked for one, say none can be given.
 
 Inventory results: report `stock_qty` and `status` exactly as returned, and never infer one \
 from the other. A listing with `stock_qty` 0 and `status` Active is a real inconsistency — \

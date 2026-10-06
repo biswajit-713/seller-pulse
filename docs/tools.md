@@ -106,6 +106,7 @@ Mon–Sun.
 | `order_lines` | int | Number of `sales.csv` rows in the window. "Orders" in the requirements means order lines, the way SQ-01's expected answer counts them |
 | `days_in_window` | int | Calendar days in the window (`end − start + 1`), so the model never has to count dates |
 | `days_with_data` | int | Distinct dates in the window that have at least one row. Less than `days_in_window` means the window is only partly covered |
+| `period_complete` | bool | `false` when `end` is on or after `data_end`, i.e. the window reaches the most recent recorded date and its totals may still grow (e.g. "September so far"). The prompt then calls it a partial period and never projects it. `previous` always ends before `start`, so it doesn't carry the field |
 | `previous` | object \| null | `{start, end, revenue_usd, units_sold, order_lines, days_in_window, days_with_data}` for the window of the same length ending the day before `start`; `null` if that window has no rows |
 | `data_start`, `data_end` | str (ISO date) | First and last dates this seller has any sales data |
 

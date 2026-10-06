@@ -59,3 +59,9 @@ def test_unknown_seller_gets_no_data_and_no_hint():
     result = get_sales_analytics("SELLER-999", "last_week")
     assert result["error"]["code"] == "NO_DATA_FOR_PERIOD"
     assert "2026-09-25" not in result["error"]["message"]
+
+
+def test_window_reaching_data_end_is_not_complete():  # SQ-09
+    assert get_sales_analytics(SELLER, "2026-08-01..2026-08-31")["data"]["period_complete"] is True
+    assert get_sales_analytics(SELLER, "this_month")["data"]["period_complete"] is False
+    assert get_sales_analytics(SELLER, "2026-09-01..2026-09-25")["data"]["period_complete"] is False

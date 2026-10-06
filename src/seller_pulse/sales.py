@@ -170,13 +170,17 @@ def get_sales_analytics(seller_id: str, period: str, *, today: date | None = Non
 
     length = end - start
     prev_end = start - timedelta(days=1)
+    data_end = max(r.date for r in rows)
     return {
         "ok": True,
         "data": {
             "period": normalise_period(period),
             **current,
+            # A window reaching the last recorded date is still filling in. `previous` always
+            # ends before `start`, so it is complete whenever it exists.
+            "period_complete": end < data_end,
             "previous": _window_totals(rows, prev_end - length, prev_end),
             "data_start": min(r.date for r in rows).isoformat(),
-            "data_end": max(r.date for r in rows).isoformat(),
+            "data_end": data_end.isoformat(),
         },
     }
