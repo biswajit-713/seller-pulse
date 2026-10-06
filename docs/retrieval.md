@@ -60,7 +60,7 @@ This is the section that stops a reader from assuming the retrieval layer answer
 
 ## Measured scores
 
-From `uv run python -m seller_pulse.rag.evaluate`, 2026-10-01: **10/10 cases pass**, exit 0.
+From `uv run python -m seller_pulse.evals.retrieval_eval`, 2026-10-01: **10/10 cases pass**, exit 0.
 
 | Case | Query | Result |
 |---|---|---|

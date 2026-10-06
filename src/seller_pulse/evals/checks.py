@@ -52,6 +52,10 @@ CHECK_DIMENSIONS = frozenset(Dimension) - {Dimension.BEHAVIOR}
 
 _ID_RE = re.compile(r"\b(?:SKU-\d{4}|REV-\d+|pol-\w+)\b", re.IGNORECASE)
 _LIST_MARKER_RE = re.compile(r"^[ \t]*\d+[.)][ \t]", re.MULTILINE)
+# Models emit U+2010/U+2011 (hyphen, non-breaking hyphen) inside dates and IDs — `2026‑09‑14`,
+# `SKU‑1001`. Unnormalised, a date splits into three numeric suspects and an ID escapes the ID
+# check entirely, so answer and sources are both folded to ASCII `-` before anything is matched.
+_HYPHENS = str.maketrans({"\u2010": "-", "\u2011": "-"})
 _NUMBER_RE = re.compile(r"\d{4}-\d{2}-\d{2}|\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?")
 
 
@@ -161,6 +165,7 @@ def _not_contains_pattern(check: dict, answer: str) -> tuple[bool, str]:
 
 
 def run_checks(checks: list[dict], answer: str, trace: list[ToolCallRecord]) -> list[CheckResult]:
+    answer = answer.translate(_HYPHENS)
     numbers = {canonical for _, canonical in _number_tokens(answer)}
     results = []
     for check in checks:
@@ -190,7 +195,8 @@ def check_groundedness(
 ) -> Groundedness:
     sources = [json.dumps({"args": r.args, "result": r.result}) for r in trace]
     sources += [retrieved_context, query, query_context, TODAY, DATA_START, DATA_END, *allow]
-    source_text = "\n".join(sources)
+    source_text = "\n".join(sources).translate(_HYPHENS)
+    answer = answer.translate(_HYPHENS)
 
     source_ids = {m.upper() for m in _ID_RE.findall(source_text)}
     ungrounded_ids = list(dict.fromkeys(m for m in _ID_RE.findall(answer) if m.upper() not in source_ids))

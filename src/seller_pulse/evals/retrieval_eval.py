@@ -68,6 +68,16 @@ class HarnessError(RuntimeError):
     """A setup problem — the harness could not run, not that retrieval failed."""
 
 
+def check_store(policy_count: int, review_count: int) -> None:
+    """Refuse an empty store — `get_or_create_collection` would otherwise hide it as a low score."""
+    if policy_count == 0 or review_count == 0:
+        raise HarnessError(
+            "the vector store is empty (policy_kb="
+            f"{policy_count}, seller_reviews={review_count}). "
+            "Run: uv run python -m seller_pulse.rag.ingest"
+        )
+
+
 def load_cases(cases_path: Path, queries_path: Path) -> list[Case]:
     queries: dict[str, str] = {}
     with open(queries_path, encoding="utf-8") as f:
@@ -334,13 +344,7 @@ def main() -> int:
         review_col = review_collection(client)
         policy_count = policy_col.count()
         review_count = review_col.count()
-
-        if policy_count == 0 or review_count == 0:
-            raise HarnessError(
-                "the vector store is empty (policy_kb="
-                f"{policy_count}, seller_reviews={review_count}). "
-                "Run: uv run python -m seller_pulse.rag.ingest"
-            )
+        check_store(policy_count, review_count)
 
         policy_store = PolicyStore(client)
         review_store = ReviewStore(client, seller_id=settings.seller_id)

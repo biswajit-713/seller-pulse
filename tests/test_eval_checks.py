@@ -131,6 +131,15 @@ def test_groundedness_suspects():
     assert result.suspects == ["9.6"]
 
 
+def test_unicode_hyphens_in_dates_and_ids():
+    # The live AE-01 answer wrote U+2011 inside its dates: "2026‑09‑14 to 2026‑09‑20".
+    answer = "Last week (2026\u201109\u201114 to 2026\u201009\u201120) on SKU\u20111036; also SKU\u20114242."
+    result = _groundedness(answer, context="SKU-1036 · 2026-09-14..2026-09-20")
+    assert result.suspects == []  # whole dates, not 2026 / 09 / 14
+    assert result.ungrounded_ids == ["SKU-4242"]
+    assert _one({"kind": "contains_all", "needles": ["SKU-1036", "2026-09-14"]}, answer=answer).passed
+
+
 def test_groundedness_query_context_and_allow():
     result = _groundedness(
         "Delivery took 3 weeks; 12 units.",

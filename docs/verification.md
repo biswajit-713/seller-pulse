@@ -9,7 +9,7 @@ degradation half of guardrail §5.
 
 | # | Check | Result |
 |---|---|---|
-| 1 | `uv run python -m seller_pulse.rag.evaluate` | **10/10, exit 0.** Margin `pol-2b`/`pol-2a` 0.00877 (recorded 0.00800) — drifting further from `warn_below: 0.004`, healthy. |
+| 1 | `uv run python -m seller_pulse.evals.retrieval_eval` | **10/10, exit 0.** Margin `pol-2b`/`pol-2a` 0.00877 (recorded 0.00800) — drifting further from `warn_below: 0.004`, healthy. |
 | 2 | `uv run python -m seller_pulse.rag.ingest`, no regression | **6 / 111 / 150**, unchanged. |
 | 3 | `CHROMA_PATH` override | Ingest wrote to the override path and printed it; `build_retriever` under the same env var read it back (2 policy hits on a test query); unset reverts to `data/listings.csv`'s sibling `data/chroma`. |
 | 4 | Tenant isolation | `ReviewStore(client, seller_id="SELLER-999")` raised `RuntimeError: No reviews carry seller_id='SELLER-999' (111 rows in the collection).` |

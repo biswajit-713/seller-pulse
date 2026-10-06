@@ -55,7 +55,7 @@ fresh rather than to the pinned versions.
 ## Retrieval Statistics (in progress — cases grow over the coming weeks)
 
 ```bash
-uv run python -m seller_pulse.rag.evaluate
+uv run python -m seller_pulse.evals.retrieval_eval
 ```
 
 Scores the vector store against 10 cases in `data/synthetic_queries/retrieval_cases.jsonl` and
