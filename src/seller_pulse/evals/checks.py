@@ -1,7 +1,7 @@
 """Deterministic scorers for the agent eval — no model involved.
 
 `run_checks` scores a case's hand-written checks (`agent_cases.jsonl`, ev-01) against the
-answer text and the tool trace. `check_traceable` is the automatic grounding check that runs on
+answer text and the tool trace. `check_groundedness` is the automatic grounding check that runs on
 every case: an ID in the answer that no source carries is fabricated (IDs can't be derived), so
 it fails outright; a number no source carries may still be derived ("9.6%", a difference), so it
 only becomes a *suspect* for the judge (ev-04) to classify.
@@ -38,7 +38,7 @@ class CheckKind(StrEnum):
     CONTAINS_ALL = "contains_all"
     CONTAINS_ANY = "contains_any"
     NOT_CONTAINS_PATTERN = "not_contains_pattern"
-    TRACEABLE = "traceable"  # automatic on every case, never written in the case file
+    GROUNDEDNESS = "groundedness"  # automatic on every case, never written in the case file
 
 
 DEFAULT_DIMENSIONS = {
@@ -64,9 +64,9 @@ class CheckResult:
 
 
 @dataclass(frozen=True)
-class Traceability:
-    check: CheckResult  # kind="traceable", dimension="grounded"; fails iff untraced_ids
-    untraced_ids: list[str]
+class Groundedness:
+    check: CheckResult  # kind="groundedness", dimension="grounded"; fails iff ungrounded_ids
+    ungrounded_ids: list[str]
     suspects: list[str]  # numbers in the answer with no source match — for the judge
 
 
@@ -107,7 +107,7 @@ def _norm_arg(value: object) -> str:
 
 def _kind_and_dimension(check: dict) -> tuple[CheckKind, Dimension]:
     kind = check.get("kind")
-    if kind not in DEFAULT_DIMENSIONS:  # also rejects `traceable` written in the file
+    if kind not in DEFAULT_DIMENSIONS:  # also rejects `groundedness` written in the file
         raise ValueError(f"Unknown check kind {kind!r}: {check}")
     dimension = check.get("dimension", DEFAULT_DIMENSIONS[kind])
     if dimension not in CHECK_DIMENSIONS:
@@ -179,7 +179,7 @@ def run_checks(checks: list[dict], answer: str, trace: list[ToolCallRecord]) -> 
     return results
 
 
-def check_traceable(
+def check_groundedness(
     answer: str,
     *,
     trace: list[ToolCallRecord],
@@ -187,24 +187,24 @@ def check_traceable(
     query: str,
     query_context: str = "",
     allow: Iterable[str] = (),
-) -> Traceability:
+) -> Groundedness:
     sources = [json.dumps({"args": r.args, "result": r.result}) for r in trace]
     sources += [retrieved_context, query, query_context, TODAY, DATA_START, DATA_END, *allow]
     source_text = "\n".join(sources)
 
     source_ids = {m.upper() for m in _ID_RE.findall(source_text)}
-    untraced_ids = list(dict.fromkeys(m for m in _ID_RE.findall(answer) if m.upper() not in source_ids))
+    ungrounded_ids = list(dict.fromkeys(m for m in _ID_RE.findall(answer) if m.upper() not in source_ids))
 
     source_numbers = {canonical for _, canonical in _number_tokens(source_text)}
     suspects = list(
         dict.fromkeys(surface for surface, canonical in _number_tokens(answer) if canonical not in source_numbers)
     )
 
-    if untraced_ids:
-        detail = f"IDs not in any source: {untraced_ids}"
+    if ungrounded_ids:
+        detail = f"IDs not in any source: {ungrounded_ids}"
     else:
         detail = "every ID traced" + (f"; {len(suspects)} numeric suspect(s) for the judge" if suspects else "")
     check = CheckResult(
-        kind=CheckKind.TRACEABLE, dimension=Dimension.GROUNDED, passed=not untraced_ids, detail=detail
+        kind=CheckKind.GROUNDEDNESS, dimension=Dimension.GROUNDED, passed=not ungrounded_ids, detail=detail
     )
-    return Traceability(check=check, untraced_ids=untraced_ids, suspects=suspects)
+    return Groundedness(check=check, ungrounded_ids=ungrounded_ids, suspects=suspects)

@@ -68,7 +68,7 @@ note), and `SQ-05`/`SQ-22` (threshold set, then changed).
 | `status` | `scored` (counts toward the 80% threshold) or `known_gap` (runs and is reported, not scored) |
 | `bucket` | `sales` \| `guardrail` \| `rag_draft` — for per-bucket rates |
 | `checks` | deterministic checks — see below; empty means judge-only, and `why` says so |
-| `traceable_allow` | optional — values legitimately absent from every source, each with a `why` |
+| `groundedness_allow` | optional — values legitimately absent from every source, each with a `why` |
 | `why` | one line: what the case proves (for `known_gap`, the missing capability) |
 
 Check kinds: `tool_called` (≥1 call to `name`; each listed `args` value must be in its accepted
@@ -78,7 +78,7 @@ accepted alternate anchorings), `not_contains_pattern` (regex must not match). E
 scores one dimension — `tool_use`, `accuracy` or `grounded` — defaulting by kind
 (`tool_*` → `tool_use`, `contains_*` → `accuracy`, `not_contains_pattern` → `grounded`),
 overridable with `"dimension"`. The fourth dimension, `behavior`, is judge-only. An automatic
-`traceable` check (every ID and number in the answer must appear in the tool trace, retrieved
+`groundedness` check (every ID and number in the answer must appear in the tool trace, retrieved
 context or query) runs on every case and is never written here.
 
 Every figure or ID needle comes from its query's `expected_answer` or `references`.

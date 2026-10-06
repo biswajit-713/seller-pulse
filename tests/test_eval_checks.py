@@ -1,7 +1,7 @@
 import pytest
 
 from seller_pulse.agent import ToolCallRecord
-from seller_pulse.evals.checks import CheckKind, Dimension, check_traceable, run_checks
+from seller_pulse.evals.checks import CheckKind, Dimension, check_groundedness, run_checks
 from seller_pulse.prompts import SYSTEM_PROMPT
 
 SALES = "get_sales_analytics"
@@ -77,7 +77,7 @@ def test_unknown_kind_raises():
     with pytest.raises(ValueError):
         run_checks([{"kind": "regex_match"}], "", [])
     with pytest.raises(ValueError):  # automatic only, never written in the case file
-        run_checks([{"kind": "traceable"}], "", [])
+        run_checks([{"kind": "groundedness"}], "", [])
 
 
 def test_dimensions_default_override_and_behavior_raises():
@@ -104,35 +104,35 @@ def test_dimensions_default_override_and_behavior_raises():
         run_checks([{"kind": "contains_all", "needles": [], "dimension": "style"}], "", [])
 
 
-# --- traceable
+# --- groundedness
 
 
-def _traceable(answer, trace=(LAST_WEEK,), context="", query="How did last week go?", **kw):
-    return check_traceable(answer, trace=list(trace), retrieved_context=context, query=query, **kw)
+def _groundedness(answer, trace=(LAST_WEEK,), context="", query="How did last week go?", **kw):
+    return check_groundedness(answer, trace=list(trace), retrieved_context=context, query=query, **kw)
 
 
-def test_traceable_ids():
+def test_groundedness_ids():
     context = "[review REV-567 · SKU-1036 · 2★]"
-    ok = _traceable("See rev-567 on SKU-1036.", context=context)
-    assert ok.check.passed and ok.check.kind is CheckKind.TRACEABLE and ok.check.dimension is Dimension.GROUNDED
-    bad = _traceable("See REV-567 and REV-999.", context=context)
+    ok = _groundedness("See rev-567 on SKU-1036.", context=context)
+    assert ok.check.passed and ok.check.kind is CheckKind.GROUNDEDNESS and ok.check.dimension is Dimension.GROUNDED
+    bad = _groundedness("See REV-567 and REV-999.", context=context)
     assert not bad.check.passed
-    assert bad.untraced_ids == ["REV-999"]
+    assert bad.ungrounded_ids == ["REV-999"]
 
 
-def test_traceable_suspects():
+def test_groundedness_suspects():
     answer = (
         "As of 2026-09-27:\n"
         "1. Revenue $41,904.71 on 904 orders, up 9.6%.\n"
         "2. SKU-1036 is fine.\n"
     )
-    result = _traceable(answer, context="SKU-1036")
+    result = _groundedness(answer, context="SKU-1036")
     assert result.check.passed
     assert result.suspects == ["9.6"]
 
 
-def test_traceable_query_context_and_allow():
-    result = _traceable(
+def test_groundedness_query_context_and_allow():
+    result = _groundedness(
         "Delivery took 3 weeks; 12 units.",
         query_context="delivery took almost 3 weeks",
         allow=["12"],
@@ -140,8 +140,8 @@ def test_traceable_query_context_and_allow():
     assert result.suspects == []
 
 
-def test_traceable_system_prompt_wording_is_not_a_source():
+def test_groundedness_system_prompt_wording_is_not_a_source():
     # 2026-09-14 is in the prompt's example wording; only its stated dates are sources.
     assert "2026-09-14" in SYSTEM_PROMPT
-    result = _traceable("Data starts 2026-08-03; week of 2026-09-14.", trace=[])
+    result = _groundedness("Data starts 2026-08-03; week of 2026-09-14.", trace=[])
     assert result.suspects == ["2026-09-14"]
