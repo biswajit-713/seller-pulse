@@ -23,6 +23,9 @@ commit — don't assume its absence from `git status` means it's untracked-and-s
 Never run `git commit` (or `git push`) on your own initiative. Make the requested changes
 and leave them staged/unstaged for the user to review and commit themselves.
 
+If documentation (`docs/`, `plan/`, READMEs, this file) conflicts with the code, the code
+supersedes — treat the code as the source of truth and flag the stale doc to the user.
+
 ## Commands
 
 ```bash
