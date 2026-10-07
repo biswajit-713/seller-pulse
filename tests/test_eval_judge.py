@@ -1,18 +1,18 @@
 from seller_pulse.agent import ToolCallRecord
-from seller_pulse.evals.judge import Attempt, DimensionVerdict, Rubric, SuspectVerdict, Verdict, judge
+from seller_pulse.evals.judge import Attempt, DimensionVerdict, PointVerdict, Rubric, SuspectVerdict, Verdict, judge
 
 PASS = DimensionVerdict(result="pass", reasons=["ok"], missed=[])
 CANNED = Verdict(
     suspects=[SuspectVerdict(value="9.6%", classification="derived", basis="(1000-904)/1000 from trace")],
+    points=[PointVerdict(point=1, met=True, evidence="Mon-Sun 2026-09-14..20")],
     accuracy=PASS,
     grounded=PASS,
-    behavior=PASS,
 )
 
 RUBRIC = Rubric(
     query="How did last week go?",
     query_context=None,
-    expected_behavior="States which window it used.",
+    must=("States which window it used.", "Compares against the prior week."),
     expected_answer="904 orders, $41,904.71 revenue.",
     notes="last_7_days figures also accepted",
 )
@@ -61,7 +61,8 @@ async def test_prompt_carries_every_input():
     prompt = _prompt(model)
     for needle in [
         RUBRIC.query,
-        RUBRIC.expected_behavior,
+        "1. States which window it used.",
+        "2. Compares against the prior week.",
         RUBRIC.expected_answer,
         RUBRIC.notes,
         ATTEMPT.retrieved_context,
@@ -85,7 +86,8 @@ async def test_empty_suspects_said_explicitly():
 async def test_model_error_becomes_failing_verdict():
     verdict = await judge(FakeJudgeModel(error=RuntimeError("rate limited")), RUBRIC, ATTEMPT)
     assert verdict.judge_error
-    for dim in (verdict.accuracy, verdict.grounded, verdict.behavior):
+    assert verdict.points == []
+    for dim in (verdict.accuracy, verdict.grounded):
         assert dim.result == "fail"
         assert dim.reasons == ["judge error: RuntimeError: rate limited"]
 

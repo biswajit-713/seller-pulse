@@ -8,7 +8,7 @@ from seller_pulse.evals import agent_eval
 from seller_pulse.evals.agent_eval import Pipeline, meets_threshold, resolve_dimensions, run_case, summarize
 from seller_pulse.evals.cases import AgentCase
 from seller_pulse.evals.checks import CheckKind, CheckResult, Dimension
-from seller_pulse.evals.judge import DimensionVerdict, SuspectVerdict, Verdict
+from seller_pulse.evals.judge import DimensionVerdict, PointVerdict, SuspectVerdict, Verdict
 from seller_pulse.rag.retrieval import RetrievalResult, Route
 
 PASS = DimensionVerdict(result="pass", reasons=["ok"], missed=[])
@@ -16,8 +16,13 @@ FAIL = DimensionVerdict(result="fail", reasons=["no"], missed=["the caveat"])
 NA = DimensionVerdict(result="n/a", reasons=[], missed=[])
 
 
-def _verdict(accuracy=PASS, grounded=PASS, behavior=PASS, suspects=()):
-    return Verdict(suspects=list(suspects), accuracy=accuracy, grounded=grounded, behavior=behavior)
+MUST = ("States the window.",)
+MET = [PointVerdict(point=1, met=True, evidence="ok")]
+UNMET = [PointVerdict(point=1, met=False, evidence="no window")]
+
+
+def _verdict(accuracy=PASS, grounded=PASS, points=MET, suspects=()):
+    return Verdict(suspects=list(suspects), points=list(points), accuracy=accuracy, grounded=grounded)
 
 
 def _check(dimension, passed=True):
@@ -26,7 +31,7 @@ def _check(dimension, passed=True):
 
 def _case(id="AE-01", status="scored", bucket="sales", checks=()):
     return AgentCase(
-        id=id, source_query="SQ-01", status=status, bucket=bucket, checks=list(checks), why="",
+        id=id, source_query="SQ-01", status=status, bucket=bucket, checks=list(checks), must=MUST, why="",
         query="How did last week go?", query_context=None, expected_behavior="Use the tool.",
         expected_answer="Good.", notes=None,
     )
@@ -87,12 +92,30 @@ def test_judge_fail_beats_check_pass():
 
 
 def test_pass_with_no_fails_and_na_when_nothing_applies():
-    dims = resolve_dimensions([], _verdict(accuracy=NA, grounded=NA))
+    dims = resolve_dimensions([], _verdict(accuracy=NA, grounded=NA), must=MUST)
     assert dims == {"tool_use": "n/a", "accuracy": "n/a", "grounded": "n/a", "behavior": "pass"}
 
 
+@pytest.mark.parametrize(
+    "points, expected",
+    [
+        (MET, "pass"),
+        (UNMET, "fail"),
+        ([], "fail"),  # point not returned by the judge
+        ([*MET, PointVerdict(point=2, met=False, evidence="extra")], "pass"),  # unknown point ignored
+    ],
+)
+def test_behavior_is_one_result_per_must_point(points, expected):
+    assert resolve_dimensions([], _verdict(points=points), must=MUST)["behavior"] == expected
+
+
+def test_accuracy_fail_does_not_fail_behavior():
+    dims = resolve_dimensions([], _verdict(accuracy=FAIL), must=MUST)
+    assert dims["accuracy"] == "fail" and dims["behavior"] == "pass"
+
+
 def test_tool_use_ignores_the_judge():
-    judge_error = Verdict(suspects=[], accuracy=FAIL, grounded=FAIL, behavior=FAIL, judge_error=True)
+    judge_error = Verdict(suspects=[], points=[], accuracy=FAIL, grounded=FAIL, judge_error=True)
     assert resolve_dimensions([_check(Dimension.TOOL_USE)], judge_error)["tool_use"] == "pass"
     assert resolve_dimensions([], judge_error)["tool_use"] == "n/a"
 
@@ -124,7 +147,7 @@ async def test_run_case_passes_only_when_no_dimension_fails():
     assert run.passed and run.dimensions["accuracy"] == "pass"
     assert "<retrieved_context>" in run.retrieved_context
 
-    run = await run_case(_case(), _pipeline(["All fine."], _verdict(behavior=FAIL)))
+    run = await run_case(_case(), _pipeline(["All fine."], _verdict(points=UNMET)))
     assert not run.passed
 
 

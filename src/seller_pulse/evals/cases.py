@@ -1,7 +1,9 @@
 """Load `agent_cases.jsonl` (ev-01) and join each case to its query in `queries.jsonl`.
 
 The case file never copies query text: `query`, `query_context`, `expected_behavior`,
-`expected_answer` and `notes` come from the joined `queries.jsonl` record. Every problem with
+`expected_answer` and `notes` come from the joined `queries.jsonl` record. `must` — the
+judge's complete requirement list for `behavior` — lives in the case file: it is eval-specific,
+distilled from `expected_behavior`. Every problem with
 the files — a malformed line, a missing field, an unknown `source_query`, a duplicate id, a
 check `run_checks` would reject — raises `HarnessError`, which the runner maps to exit 2.
 """
@@ -18,7 +20,7 @@ from seller_pulse.evals.retrieval_eval import DEFAULT_QUERIES_PATH, HarnessError
 
 DEFAULT_AGENT_CASES_PATH = DATA_DIR / "synthetic_queries" / "agent_cases.jsonl"
 STATUSES = frozenset({"scored", "known_gap"})
-_REQUIRED = ("id", "source_query", "status", "bucket", "checks", "why")
+_REQUIRED = ("id", "source_query", "status", "bucket", "checks", "must", "why")
 
 
 @dataclass(frozen=True)
@@ -28,6 +30,7 @@ class AgentCase:
     status: str  # scored | known_gap
     bucket: str
     checks: list[dict]
+    must: tuple[str, ...]
     why: str
     query: str
     query_context: str | None
@@ -50,7 +53,7 @@ class AgentCase:
         return Rubric(
             query=self.query,
             query_context=self.query_context,
-            expected_behavior=self.expected_behavior,
+            must=self.must,
             expected_answer=self.expected_answer,
             notes=self.notes,
         )
@@ -80,6 +83,13 @@ def _allow_values(raw: dict, where: str) -> tuple[str, ...]:
             raise HarnessError(f"{where}: groundedness_allow entries need a value and a why: {entry!r}")
         values.append(str(entry["value"]))
     return tuple(values)
+
+
+def _must(raw: dict, where: str) -> tuple[str, ...]:
+    must = raw["must"]
+    if not isinstance(must, list) or not must or not all(isinstance(p, str) and p.strip() for p in must):
+        raise HarnessError(f"{where}: must needs a non-empty list of non-empty strings: {must!r}")
+    return tuple(must)
 
 
 def load_cases(
@@ -114,6 +124,7 @@ def load_cases(
                 status=raw["status"],
                 bucket=raw["bucket"],
                 checks=raw["checks"],
+                must=_must(raw, where),
                 why=raw["why"],
                 query=query["query"],
                 query_context=query.get("query_context"),

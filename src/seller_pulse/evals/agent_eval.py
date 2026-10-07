@@ -84,21 +84,28 @@ def _suspect_key(value: str) -> str:
     return value.strip().strip("$%").strip()
 
 
+def _points_met(verdict: Verdict) -> dict[int, bool]:
+    return {p.point: p.met for p in verdict.points}
+
+
 def resolve_dimensions(
-    checks: list[CheckResult], verdict: Verdict, suspects: Sequence[str] = ()
+    checks: list[CheckResult], verdict: Verdict, suspects: Sequence[str] = (), must: Sequence[str] = ()
 ) -> dict[str, str]:
     """Each dimension → fail if anything contributing failed, pass if ≥1 applied, else n/a.
 
     `tool_use` is deterministic only. For `grounded`, a suspect the judge called `fabricated`,
-    or didn't classify at all, is a fail — the judge can't pass its way around one.
+    or didn't classify at all, is a fail — the judge can't pass its way around one. `behavior`
+    is one result per `must` point, on the same rule: a point the judge didn't return is unmet.
     """
     results: dict[str, list[bool]] = {d: [] for d in DIMENSIONS}
     for check in checks:
         results[check.dimension].append(check.passed)
-    for dimension in (Dimension.ACCURACY, Dimension.GROUNDED, Dimension.BEHAVIOR):
+    for dimension in (Dimension.ACCURACY, Dimension.GROUNDED):
         dimension_verdict = getattr(verdict, dimension)
         if dimension_verdict.result != "n/a":
             results[dimension].append(dimension_verdict.result == "pass")
+    met = _points_met(verdict)
+    results[Dimension.BEHAVIOR] = [met.get(i, False) for i in range(1, len(must) + 1)]
     classified = {_suspect_key(s.value): s.classification for s in verdict.suspects}
     results[Dimension.GROUNDED] += [classified.get(_suspect_key(s)) == "derived" for s in suspects]
 
@@ -142,7 +149,7 @@ async def run_case(case: AgentCase, pipeline: Pipeline) -> CaseRun:
         checks=checks,
         groundedness=grounding,
         verdict=verdict,
-        dimensions=resolve_dimensions(checks, verdict, grounding.suspects),
+        dimensions=resolve_dimensions(checks, verdict, grounding.suspects, case.must),
         latency_ms=latency_ms,
     )
 
@@ -204,6 +211,7 @@ def case_to_json(run: CaseRun) -> dict[str, Any]:
         "passed": run.passed,
         "dimensions": run.dimensions,
         "query": run.case.message,
+        "must": list(run.case.must),
         "answer": run.answer,
         "retrieved_context": run.retrieved_context,
         "trace": [asdict(r) for r in run.trace],
@@ -257,10 +265,16 @@ def render(run: CaseRun) -> None:
             print(f"  ✗ {check.kind} [{check.dimension}]: {check.detail}")
     if run.verdict.judge_error:
         print(f"  judge error: {run.verdict.accuracy.reasons[0]}")
-    for d in (Dimension.ACCURACY, Dimension.GROUNDED, Dimension.BEHAVIOR):
+    for d in (Dimension.ACCURACY, Dimension.GROUNDED):
         if run.dimensions[d] == "fail":
             for missed in getattr(run.verdict, d).missed:
                 print(f"  {d} missed: {missed}")
+    if run.dimensions[Dimension.BEHAVIOR] == "fail":
+        points = {p.point: p for p in run.verdict.points}
+        for i, point in enumerate(run.case.must, start=1):
+            p = points.get(i)
+            if p is None or not p.met:
+                print(f"  behavior unmet {i}. {point}" + (f" — {p.evidence}" if p else " — not graded"))
     if run.dimensions[Dimension.GROUNDED] == "fail":
         if run.groundedness.ungrounded_ids:
             print(f"  ungrounded IDs: {run.groundedness.ungrounded_ids}")

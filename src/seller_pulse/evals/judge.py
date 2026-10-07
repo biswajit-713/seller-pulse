@@ -1,5 +1,11 @@
 """The LLM judge (ev-04): grades one answer on accuracy, groundedness and behaviour.
 
+Each dimension has one job, so a single miss never fails two of them. `behavior` is a yes/no
+per point of the case's `must` list — the only place completeness is graded; the runner, not
+the judge, folds the points into a dimension result. `accuracy` fails only on a *contradiction*
+of the reference answer, never an omission: references are full exemplar answers, and grading
+them as a checklist made every optional detail mandatory.
+
 Inputs split in two: `Rubric` is what the answer is graded *against* (fixed per case), `Attempt`
 is what one run produced and saw. `grounded` is judged only against `Attempt` — a correct claim
 the agent had no source for still fails. No `tool_use` dimension: that one is deterministic only.
@@ -35,11 +41,17 @@ class SuspectVerdict(BaseModel):
     basis: str  # e.g. "(1000-904)/1000 from trace" / "no source"
 
 
+class PointVerdict(BaseModel):
+    point: int  # 1-based number of the MUST point, as listed
+    met: bool
+    evidence: str  # the answer text that meets it, or what is missing
+
+
 class Verdict(BaseModel):
     suspects: list[SuspectVerdict]
-    accuracy: DimensionVerdict
+    points: list[PointVerdict]  # one per MUST point → `behavior`
+    accuracy: DimensionVerdict  # contradictions of the reference only
     grounded: DimensionVerdict
-    behavior: DimensionVerdict
     judge_error: bool = False
 
 
@@ -47,7 +59,7 @@ class Verdict(BaseModel):
 class Rubric:
     query: str
     query_context: str | None
-    expected_behavior: str
+    must: tuple[str, ...]
     expected_answer: str
     notes: str | None
 
@@ -61,13 +73,23 @@ class Attempt:
 
 
 JUDGE_PROMPT = """\
-You grade one answer from Seller Pulse, an assistant for a solo marketplace seller. Grade three \
-dimensions independently and return the structured verdict.
+You grade one answer from Seller Pulse, an assistant for a solo marketplace seller. Grade each \
+part independently and return the structured verdict. Each part has one job: never fail one \
+part for something another part covers.
 
-## accuracy — graded against the REFERENCE
-Are the facts the answer states consistent with the reference answer, allowing the accepted \
-alternates in NOTES? Wording need not match. Missing a headline fact the reference has → fail. \
-`n/a` only when the reference carries no checkable facts (e.g. a pure refusal with no figures).
+## points — graded against the MUST list
+For every numbered MUST point, return one entry: `point` (its number), `met` (true/false) and \
+`evidence` (the answer text that meets it, or what is missing). Judge each point on its own \
+words, literally — the MUST list is the complete set of requirements; nothing else in the \
+REFERENCE or NOTES is required. Wording need not match. A point that starts with "If" is met \
+when its condition doesn't apply.
+
+## accuracy — contradictions of the REFERENCE only
+Fail only when the answer states a fact (a figure, ID, date, rating, tier, penalty, or what a \
+policy says) that conflicts with the reference answer, allowing the accepted alternates in \
+NOTES. Omissions never fail accuracy — the reference is one full example answer, not a \
+checklist; completeness is graded by the MUST points alone. List each contradiction in \
+`missed`. `n/a` when the answer states no fact the reference covers.
 
 ## grounded — graded against WHAT THE AGENT SAW (tool trace + retrieved context + query), \
 never the reference
@@ -81,12 +103,8 @@ something) against the tool trace and retrieved context. A claim that is true bu
 the agent saw supports is still a fail.
 `n/a` when there are no suspects and no non-numeric factual claims.
 
-## behavior — graded against the RUBRIC
-Does the answer do each thing the rubric asks (refusal + reason + alternative, draft label, \
-caveat, stated window, …)? List each unmet point in `missed`. Never `n/a`.
-
-On every dimension: don't penalise extra correct detail or style. Put one reason per rubric \
-point or claim in `reasons`; `missed` is empty on a pass.
+On every part: don't penalise extra correct detail or style. Put one reason per claim in \
+`reasons`; `missed` is empty on a pass.
 """
 
 
@@ -97,6 +115,10 @@ def _section(title: str, body: str) -> str:
 def _render_trace(trace: list[ToolCallRecord]) -> str:
     calls = [json.dumps({"name": r.name, "args": r.args, "result": r.result}) for r in trace]
     return "\n".join(calls) or "(no tool calls)"
+
+
+def _render_must(must: tuple[str, ...]) -> str:
+    return "\n".join(f"{i}. {point}" for i, point in enumerate(must, start=1))
 
 
 def _render_suspects(suspects: list[str]) -> str:
@@ -110,8 +132,8 @@ def build_messages(rubric: Rubric, attempt: Attempt) -> list:
         "## Case",
         _section("QUERY", rubric.query),
         _section("PASTED QUERY CONTEXT", rubric.query_context or ""),
-        _section("RUBRIC (expected behavior)", rubric.expected_behavior),
-        _section("REFERENCE (expected answer — content must be consistent with; wording need not match)",
+        _section("MUST (the complete requirements — one points entry each)", _render_must(rubric.must)),
+        _section("REFERENCE (one full example answer — check for contradictions, not omissions)",
                  rubric.expected_answer),
         _section("NOTES (accepted alternates)", rubric.notes or ""),
         "## What the agent saw",
@@ -126,7 +148,7 @@ def build_messages(rubric: Rubric, attempt: Attempt) -> list:
 
 def _error_verdict(message: str) -> Verdict:
     failed = DimensionVerdict(result="fail", reasons=[f"judge error: {message}"], missed=[])
-    return Verdict(suspects=[], accuracy=failed, grounded=failed, behavior=failed, judge_error=True)
+    return Verdict(suspects=[], points=[], accuracy=failed, grounded=failed, judge_error=True)
 
 
 async def judge(model: BaseChatModel, rubric: Rubric, attempt: Attempt) -> Verdict:

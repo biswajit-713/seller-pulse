@@ -12,7 +12,8 @@ QUERIES = [
      "expected_behavior": "Label it a draft.", "expected_answer": "Sorry..."},
 ]
 CASE = {"id": "AE-01", "source_query": "SQ-01", "status": "scored", "bucket": "sales",
-        "checks": [{"kind": "tool_called", "name": "get_sales_analytics"}], "why": "headline"}
+        "checks": [{"kind": "tool_called", "name": "get_sales_analytics"}],
+        "must": ["States the window."], "why": "headline"}
 
 
 def _write(tmp_path, cases, queries=QUERIES):
@@ -33,6 +34,7 @@ def test_joins_query_fields(tmp_path):
     assert case.message == case.query
     assert case.rubric.expected_answer == "904 orders."
     assert case.rubric.notes == "last_7_days accepted"
+    assert case.rubric.must == ("States the window.",)
     assert case.scored
 
 
@@ -62,6 +64,10 @@ def test_groundedness_allow_values(tmp_path):
         ([_case(checks=[{"kind": "contains_all"}])], "malformed check"),
         ([_case(checks=[{"kind": "contains_all", "needles": ["x"], "dimension": "behavior"}])], "malformed check"),
         ([_case(groundedness_allow=["21"])], "groundedness_allow"),
+        ([{k: v for k, v in CASE.items() if k != "must"}], "missing"),
+        ([_case(must=[])], "must"),
+        ([_case(must="States the window.")], "must"),
+        ([_case(must=["ok", " "])], "must"),
     ],
 )
 def test_bad_case_file_raises_harness_error(tmp_path, cases, message):
