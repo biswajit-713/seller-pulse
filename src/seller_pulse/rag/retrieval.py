@@ -30,6 +30,14 @@ The stats path is gated because it is a cost-and-shape question, not a relevance
 renders all 111 reviews into a per-SKU table, which would dominate the context block for a
 question that has nothing to do with aggregates. Missing the hint just falls back to a normal
 review search — a reasonable answer, not a wrong one.
+
+A star rating named in the question ("the buyer who left me a 1-star about shipping") becomes a
+metadata filter on the review search. The rating lives only in metadata — the embedded document
+is `"{title}. {comment}"` — so without the filter "1-star" matches nothing and 4★/5★ "arrived
+fast" reviews outrank the review the seller means (SQ-18: REV-586 ranked 12th). A rating a change
+verb points *to* ("bump it to 4 stars") is the seller's target, not the review's, and is
+ignored; a bare "to" ("reply to 2-star reviews") is not enough. Several distinct ratings, or a filter that matches no review, fall back to the
+unfiltered search.
 """
 
 import re
@@ -120,11 +128,11 @@ class ReviewStore:
         base = {"seller_id": self._seller_id}
         return base if extra is None else {"$and": [base, extra]}
 
-    def search(self, query: str, *, k: int = REVIEW_K) -> list[Hit]:
+    def search(self, query: str, *, k: int = REVIEW_K, rating: int | None = None) -> list[Hit]:
         result = self._collection.query(
             query_texts=[query],
             n_results=k,
-            where=self._where(),
+            where=self._where(None if rating is None else {"rating": rating}),
         )
         return _query_hits(result, citation_fn=_review_citation)
 
@@ -156,6 +164,26 @@ _STATS_HINTS = frozenset(
     "complain complaining complaint complaints worst best most least common commonly "
     "themes theme overall average typically ranking".split()
 )
+
+
+_NUMBER_WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5}
+# A rating is a target only after a change verb ("bump it up to 4 stars"), so "reply to
+# 2-star reviews" still filters on 2★. Up to three words may sit between verb and "to".
+_CHANGE_VERBS = r"(?:bump|chang|rais|mov|updat|upgrad|increas|edit|switch|turn|get|got)\w*"
+_RATING_PATTERN = re.compile(
+    rf"(?P<target>\b{_CHANGE_VERBS}\s+(?:\w+\s+){{0,3}}?(?:in)?to\s+(?:an?\s+)?)?"
+    r"\b(?P<n>[1-5]|one|two|three|four|five)\s*-?\s*(?:stars?\b|★)"
+)
+
+
+def mentioned_rating(question: str) -> int | None:
+    """The single review rating the question names, or None if it names zero or several."""
+    ratings = {
+        _NUMBER_WORDS.get(match["n"]) or int(match["n"])
+        for match in _RATING_PATTERN.finditer(question.casefold())
+        if not match["target"]
+    }
+    return ratings.pop() if len(ratings) == 1 else None
 
 
 class Route(StrEnum):
@@ -192,10 +220,12 @@ class Retriever:
         from seller_pulse.rag.stats import compute
 
         route = classify(question)
+        rating = mentioned_rating(question)
+        reviews = self._reviews.search(question, rating=rating) if rating is not None else []
         return RetrievalResult(
             route=route,
             question=question,
-            reviews=tuple(self._reviews.search(question)),
+            reviews=tuple(reviews or self._reviews.search(question)),
             policy=tuple(self._policy.search(question)),
             stats=compute(self._reviews) if route is Route.STATS else None,
         )
