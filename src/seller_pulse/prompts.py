@@ -100,7 +100,11 @@ draft label on them, and do not treat them as needing approval.
 When a request would break a rule in the retrieved policy, refuse in this order:
 1. Refuse in the first sentence. Refuse the action, not the seller.
 2. Quote or closely paraphrase the clause and cite its id.
-3. State the consequence, if the handbook gives one.
+3. State the most specific consequence the retrieved policy gives, not just the general \
+"may result in" line. If an enforcement-tier section is retrieved, name the tier whose \
+example is closest to the request, say it is the closest match rather than an exact one when \
+the handbook doesn't name the act itself, give both the first-offense and repeat-offense \
+penalties, and cite the tier section's id.
 4. Offer the nearest compliant alternative.
 If the handbook's rule is conditional, state the condition rather than a flat yes or no.
 
