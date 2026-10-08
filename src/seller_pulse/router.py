@@ -17,3 +17,6 @@ class Route(StrEnum):
 # Routes that are labelled in the gold set but not built yet. Cases carrying one are skipped in
 # the classifier eval until the route lands.
 DEFERRED_ROUTES = frozenset({Route.MEMORY})
+
+# Every route that is built. The fail-open answer: a classifier error routes here.
+ALL_ROUTES = frozenset(Route) - DEFERRED_ROUTES
