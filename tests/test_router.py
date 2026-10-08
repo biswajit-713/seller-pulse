@@ -25,10 +25,11 @@ class FakeRouterModel:
     def __init__(self, reply=None, error: Exception | None = None, delay_s: float = 0) -> None:
         self.reply, self.error, self.delay_s = reply, error, delay_s
         self.schema = None
+        self.kwargs: dict = {}
         self.seen: list = []
 
-    def with_structured_output(self, schema):
-        self.schema = schema
+    def with_structured_output(self, schema, **kwargs):
+        self.schema, self.kwargs = schema, kwargs
         return self
 
     async def ainvoke(self, messages):
@@ -53,6 +54,7 @@ async def test_multi_label_answer_is_parsed():
     assert decision.fallback is False
     assert decision.latency_ms >= 0
     assert model.schema is RouteSchema
+    assert model.kwargs == {"method": "json_schema", "strict": True}
 
 
 async def test_empty_list_stays_empty():

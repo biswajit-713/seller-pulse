@@ -40,6 +40,9 @@ DEFERRED_ROUTES = frozenset({Route.MEMORY})
 ALL_ROUTES = frozenset(Route) - DEFERRED_ROUTES
 
 CLASSIFY_TIMEOUT_S = 4.0
+# Strict JSON-schema output (rt-05): both gpt-oss candidates accept it on Groq, and unlike
+# function calling the answer is constrained to the schema rather than merely asked for.
+STRUCTURED_OUTPUT = {"method": "json_schema", "strict": True}
 # Each side of the previous exchange is cut to this many characters: enough to show the topic
 # of a follow-up ("and the week before?"), not enough to pay for a long answer twice.
 HISTORY_CHARS = 300
@@ -105,7 +108,14 @@ rewriting listing copy.
 titles, photos, incentives to buyers, refunds tied to reviews, compliance or policy audits.
 
 If the request asks to change a listing, price, title, photo or claim, or offers anything to a \
-buyer, include policy.
+buyer, include policy. A new claim about a product also needs reviews, to check it against what \
+buyers report.
+
+A shop-wide check against marketplace rules (an audit, "is anything at risk") needs all three \
+routes: stock and listing status come from the tools, claims are checked against reviews.
+
+There is no orders table: cancellations, returns and delivery problems are known only from \
+buyer reviews, so they are reviews, not data.
 
 A previous exchange may be shown. Use it only to understand a short follow-up (e.g. "and the \
 week before?" after a sales answer is data); route the new message, not the old one.
@@ -146,7 +156,9 @@ async def classify_query(
     start = time.perf_counter()
     try:
         answer = await asyncio.wait_for(
-            model.with_structured_output(RouteSchema).ainvoke(build_messages(question, history)),
+            model.with_structured_output(RouteSchema, **STRUCTURED_OUTPUT).ainvoke(
+                build_messages(question, history)
+            ),
             timeout=timeout_s,
         )
         if not isinstance(answer, RouteSchema):

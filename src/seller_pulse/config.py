@@ -12,7 +12,8 @@ DEFAULT_MODEL = "openai/gpt-oss-120b"
 # Eval judge: a different vendor from the agent so it isn't grading its own family.
 # Kimi K2 and qwen3-32b were both off Groq's model list as of 2026-10-05 (see ev-00).
 DEFAULT_JUDGE_MODEL = "qwen/qwen3.8-27b"
-# Query classifier (rt-04). Provisional: rt-05 confirms it or switches to gpt-oss-120b.
+# Query classifier (rt-04). Chosen by rt-05: 31/31 routes ×3 runs, and it keeps the router off
+# the agent model's per-model Groq token limits (see plan/rt-00-overview.md).
 DEFAULT_ROUTER_MODEL = "openai/gpt-oss-20b"
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]  # verified: reaches the repo root

@@ -1,0 +1,948 @@
+{
+  "run_at": "2026-10-08T06:50:22",
+  "git_sha": "3142281",
+  "dirty": true,
+  "router_model": "openai/gpt-oss-120b",
+  "temperature": 0,
+  "reasoning_effort": "low",
+  "structured_output": {
+    "method": "json_schema",
+    "strict": true
+  },
+  "pace_s": 5.0,
+  "gate": {
+    "max_fallbacks": 0,
+    "policy_recall_min": 1.0,
+    "data_recall_min": 0.95
+  },
+  "passed": false,
+  "unstable": [
+    {
+      "id": "SQ-22",
+      "predicted": [
+        [
+          "data"
+        ],
+        [
+          "data"
+        ],
+        [
+          "data",
+          "policy",
+          "reviews"
+        ]
+      ]
+    },
+    {
+      "id": "SQ-23",
+      "predicted": [
+        [
+          "data"
+        ],
+        [
+          "data"
+        ],
+        [
+          "data",
+          "policy",
+          "reviews"
+        ]
+      ]
+    },
+    {
+      "id": "SQ-24",
+      "predicted": [
+        [
+          "data"
+        ],
+        [
+          "data"
+        ],
+        [
+          "data",
+          "policy",
+          "reviews"
+        ]
+      ]
+    },
+    {
+      "id": "SQ-25",
+      "predicted": [
+        [
+          "policy",
+          "reviews"
+        ],
+        [
+          "policy"
+        ],
+        [
+          "data",
+          "policy",
+          "reviews"
+        ]
+      ]
+    },
+    {
+      "id": "SQ-26",
+      "predicted": [
+        [
+          "data"
+        ],
+        [
+          "data"
+        ],
+        [
+          "data",
+          "policy",
+          "reviews"
+        ]
+      ]
+    },
+    {
+      "id": "SQ-27",
+      "predicted": [
+        [
+          "data"
+        ],
+        [
+          "data"
+        ],
+        [
+          "data",
+          "policy",
+          "reviews"
+        ]
+      ]
+    },
+    {
+      "id": "SQ-29",
+      "predicted": [
+        [
+          "reviews"
+        ],
+        [
+          "reviews"
+        ],
+        [
+          "data",
+          "policy",
+          "reviews"
+        ]
+      ]
+    },
+    {
+      "id": "SQ-30",
+      "predicted": [
+        [
+          "data"
+        ],
+        [
+          "data"
+        ],
+        [
+          "data",
+          "policy",
+          "reviews"
+        ]
+      ]
+    },
+    {
+      "id": "SQ-31",
+      "predicted": [
+        [],
+        [],
+        [
+          "data",
+          "policy",
+          "reviews"
+        ]
+      ]
+    },
+    {
+      "id": "SQ-33",
+      "predicted": [
+        [],
+        [],
+        [
+          "data",
+          "policy",
+          "reviews"
+        ]
+      ]
+    },
+    {
+      "id": "SQ-34",
+      "predicted": [
+        [
+          "data"
+        ],
+        [
+          "data"
+        ],
+        [
+          "data",
+          "policy",
+          "reviews"
+        ]
+      ]
+    },
+    {
+      "id": "SQ-35",
+      "predicted": [
+        [
+          "data"
+        ],
+        [
+          "data"
+        ],
+        [
+          "data",
+          "policy",
+          "reviews"
+        ]
+      ]
+    },
+    {
+      "id": "SQ-36",
+      "predicted": [
+        [
+          "data"
+        ],
+        [
+          "data"
+        ],
+        [
+          "data",
+          "policy",
+          "reviews"
+        ]
+      ]
+    },
+    {
+      "id": "SQ-37",
+      "predicted": [
+        [
+          "data"
+        ],
+        [
+          "data"
+        ],
+        [
+          "data",
+          "policy",
+          "reviews"
+        ]
+      ]
+    }
+  ],
+  "runs": [
+    {
+      "cases": 31,
+      "policy_recall": {
+        "hits": 8,
+        "total": 8,
+        "rate": 1.0
+      },
+      "routes": {
+        "data": {
+          "precision": {
+            "hits": 17,
+            "total": 17,
+            "rate": 1.0
+          },
+          "recall": {
+            "hits": 17,
+            "total": 17,
+            "rate": 1.0
+          }
+        },
+        "policy": {
+          "precision": {
+            "hits": 8,
+            "total": 8,
+            "rate": 1.0
+          },
+          "recall": {
+            "hits": 8,
+            "total": 8,
+            "rate": 1.0
+          }
+        },
+        "reviews": {
+          "precision": {
+            "hits": 11,
+            "total": 11,
+            "rate": 1.0
+          },
+          "recall": {
+            "hits": 11,
+            "total": 11,
+            "rate": 1.0
+          }
+        }
+      },
+      "exact": {
+        "hits": 31,
+        "total": 31,
+        "rate": 1.0
+      },
+      "fallbacks": 0,
+      "latency_ms": {
+        "mean": 580,
+        "p95": 934,
+        "max": 1561
+      },
+      "few_shot": {
+        "cases": 8,
+        "exact": {
+          "hits": 8,
+          "total": 8,
+          "rate": 1.0
+        },
+        "policy_recall": {
+          "hits": 4,
+          "total": 4,
+          "rate": 1.0
+        },
+        "data_recall": {
+          "hits": 3,
+          "total": 3,
+          "rate": 1.0
+        }
+      },
+      "held_out": {
+        "cases": 23,
+        "exact": {
+          "hits": 23,
+          "total": 23,
+          "rate": 1.0
+        },
+        "policy_recall": {
+          "hits": 4,
+          "total": 4,
+          "rate": 1.0
+        },
+        "data_recall": {
+          "hits": 14,
+          "total": 14,
+          "rate": 1.0
+        }
+      },
+      "misses": [],
+      "deferred": [
+        {
+          "id": "SQ-05",
+          "query": "Notify me every Friday about my best-sellers running low.",
+          "gold": [
+            "data"
+          ],
+          "predicted": [
+            "data"
+          ],
+          "exact": true,
+          "fallback": false,
+          "latency_ms": 571,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-16",
+          "query": "Keep my review replies short and warm, and never use emojis.",
+          "gold": [
+            "reviews"
+          ],
+          "predicted": [
+            "reviews"
+          ],
+          "exact": true,
+          "fallback": false,
+          "latency_ms": 839,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-22",
+          "query": "Actually, only flag things when they drop under 3 units.",
+          "gold": [],
+          "predicted": [
+            "data"
+          ],
+          "exact": false,
+          "fallback": false,
+          "latency_ms": 1504,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-23",
+          "query": "Write me a restock reminder for the ones that are nearly gone.",
+          "gold": [
+            "data"
+          ],
+          "predicted": [
+            "data"
+          ],
+          "exact": true,
+          "fallback": false,
+          "latency_ms": 593,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-33",
+          "query": "What preferences do you have saved for me?",
+          "gold": [],
+          "predicted": [],
+          "exact": true,
+          "fallback": false,
+          "latency_ms": 350,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-36",
+          "query": "Which product should I restock first?",
+          "gold": [
+            "data"
+          ],
+          "predicted": [
+            "data"
+          ],
+          "exact": true,
+          "fallback": false,
+          "latency_ms": 672,
+          "few_shot": false
+        }
+      ]
+    },
+    {
+      "cases": 31,
+      "policy_recall": {
+        "hits": 8,
+        "total": 8,
+        "rate": 1.0
+      },
+      "routes": {
+        "data": {
+          "precision": {
+            "hits": 17,
+            "total": 17,
+            "rate": 1.0
+          },
+          "recall": {
+            "hits": 17,
+            "total": 17,
+            "rate": 1.0
+          }
+        },
+        "policy": {
+          "precision": {
+            "hits": 8,
+            "total": 8,
+            "rate": 1.0
+          },
+          "recall": {
+            "hits": 8,
+            "total": 8,
+            "rate": 1.0
+          }
+        },
+        "reviews": {
+          "precision": {
+            "hits": 10,
+            "total": 10,
+            "rate": 1.0
+          },
+          "recall": {
+            "hits": 10,
+            "total": 11,
+            "rate": 0.909
+          }
+        }
+      },
+      "exact": {
+        "hits": 30,
+        "total": 31,
+        "rate": 0.968
+      },
+      "fallbacks": 0,
+      "latency_ms": {
+        "mean": 688,
+        "p95": 1516,
+        "max": 2064
+      },
+      "few_shot": {
+        "cases": 8,
+        "exact": {
+          "hits": 8,
+          "total": 8,
+          "rate": 1.0
+        },
+        "policy_recall": {
+          "hits": 4,
+          "total": 4,
+          "rate": 1.0
+        },
+        "data_recall": {
+          "hits": 3,
+          "total": 3,
+          "rate": 1.0
+        }
+      },
+      "held_out": {
+        "cases": 23,
+        "exact": {
+          "hits": 22,
+          "total": 23,
+          "rate": 0.957
+        },
+        "policy_recall": {
+          "hits": 4,
+          "total": 4,
+          "rate": 1.0
+        },
+        "data_recall": {
+          "hits": 14,
+          "total": 14,
+          "rate": 1.0
+        }
+      },
+      "misses": [
+        {
+          "id": "SQ-25",
+          "query": "Update the jute rug listing to say it's handmade from organic fibres and ships next day.",
+          "gold": [
+            "policy",
+            "reviews"
+          ],
+          "predicted": [
+            "policy"
+          ],
+          "exact": false,
+          "fallback": false,
+          "latency_ms": 630,
+          "few_shot": false
+        }
+      ],
+      "deferred": [
+        {
+          "id": "SQ-05",
+          "query": "Notify me every Friday about my best-sellers running low.",
+          "gold": [
+            "data"
+          ],
+          "predicted": [
+            "data"
+          ],
+          "exact": true,
+          "fallback": false,
+          "latency_ms": 660,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-16",
+          "query": "Keep my review replies short and warm, and never use emojis.",
+          "gold": [
+            "reviews"
+          ],
+          "predicted": [
+            "reviews"
+          ],
+          "exact": true,
+          "fallback": false,
+          "latency_ms": 573,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-22",
+          "query": "Actually, only flag things when they drop under 3 units.",
+          "gold": [],
+          "predicted": [
+            "data"
+          ],
+          "exact": false,
+          "fallback": false,
+          "latency_ms": 768,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-23",
+          "query": "Write me a restock reminder for the ones that are nearly gone.",
+          "gold": [
+            "data"
+          ],
+          "predicted": [
+            "data"
+          ],
+          "exact": true,
+          "fallback": false,
+          "latency_ms": 458,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-33",
+          "query": "What preferences do you have saved for me?",
+          "gold": [],
+          "predicted": [],
+          "exact": true,
+          "fallback": false,
+          "latency_ms": 1553,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-36",
+          "query": "Which product should I restock first?",
+          "gold": [
+            "data"
+          ],
+          "predicted": [
+            "data"
+          ],
+          "exact": true,
+          "fallback": false,
+          "latency_ms": 670,
+          "few_shot": false
+        }
+      ]
+    },
+    {
+      "cases": 31,
+      "policy_recall": {
+        "hits": 8,
+        "total": 8,
+        "rate": 1.0
+      },
+      "routes": {
+        "data": {
+          "precision": {
+            "hits": 17,
+            "total": 20,
+            "rate": 0.85
+          },
+          "recall": {
+            "hits": 17,
+            "total": 17,
+            "rate": 1.0
+          }
+        },
+        "policy": {
+          "precision": {
+            "hits": 8,
+            "total": 17,
+            "rate": 0.471
+          },
+          "recall": {
+            "hits": 8,
+            "total": 8,
+            "rate": 1.0
+          }
+        },
+        "reviews": {
+          "precision": {
+            "hits": 11,
+            "total": 19,
+            "rate": 0.579
+          },
+          "recall": {
+            "hits": 11,
+            "total": 11,
+            "rate": 1.0
+          }
+        }
+      },
+      "exact": {
+        "hits": 21,
+        "total": 31,
+        "rate": 0.677
+      },
+      "fallbacks": 11,
+      "latency_ms": {
+        "mean": 1398,
+        "p95": 4003,
+        "max": 4003
+      },
+      "few_shot": {
+        "cases": 8,
+        "exact": {
+          "hits": 7,
+          "total": 8,
+          "rate": 0.875
+        },
+        "policy_recall": {
+          "hits": 4,
+          "total": 4,
+          "rate": 1.0
+        },
+        "data_recall": {
+          "hits": 3,
+          "total": 3,
+          "rate": 1.0
+        }
+      },
+      "held_out": {
+        "cases": 23,
+        "exact": {
+          "hits": 14,
+          "total": 23,
+          "rate": 0.609
+        },
+        "policy_recall": {
+          "hits": 4,
+          "total": 4,
+          "rate": 1.0
+        },
+        "data_recall": {
+          "hits": 14,
+          "total": 14,
+          "rate": 1.0
+        }
+      },
+      "misses": [
+        {
+          "id": "SQ-24",
+          "query": "Which products are low on stock right now?",
+          "gold": [
+            "data"
+          ],
+          "predicted": [
+            "data",
+            "policy",
+            "reviews"
+          ],
+          "exact": false,
+          "fallback": true,
+          "latency_ms": 109,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-25",
+          "query": "Update the jute rug listing to say it's handmade from organic fibres and ships next day.",
+          "gold": [
+            "policy",
+            "reviews"
+          ],
+          "predicted": [
+            "data",
+            "policy",
+            "reviews"
+          ],
+          "exact": false,
+          "fallback": true,
+          "latency_ms": 69,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-26",
+          "query": "What should I stop restocking?",
+          "gold": [
+            "data"
+          ],
+          "predicted": [
+            "data",
+            "policy",
+            "reviews"
+          ],
+          "exact": false,
+          "fallback": true,
+          "latency_ms": 4003,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-27",
+          "query": "Which of my listings haven't sold at all this month?",
+          "gold": [
+            "data"
+          ],
+          "predicted": [
+            "data",
+            "policy",
+            "reviews"
+          ],
+          "exact": false,
+          "fallback": true,
+          "latency_ms": 4001,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-29",
+          "query": "Reply to this review and post it now.",
+          "gold": [
+            "reviews"
+          ],
+          "predicted": [
+            "data",
+            "policy",
+            "reviews"
+          ],
+          "exact": false,
+          "fallback": true,
+          "latency_ms": 4002,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-30",
+          "query": "How is my velvet cushion selling?",
+          "gold": [
+            "data"
+          ],
+          "predicted": [
+            "data",
+            "policy",
+            "reviews"
+          ],
+          "exact": false,
+          "fallback": true,
+          "latency_ms": 4003,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-31",
+          "query": "What are other sellers charging for similar items, and can I see their sales?",
+          "gold": [],
+          "predicted": [
+            "data",
+            "policy",
+            "reviews"
+          ],
+          "exact": false,
+          "fallback": true,
+          "latency_ms": 4001,
+          "few_shot": true
+        },
+        {
+          "id": "SQ-34",
+          "query": "How did last week compare with the week before?",
+          "gold": [
+            "data"
+          ],
+          "predicted": [
+            "data",
+            "policy",
+            "reviews"
+          ],
+          "exact": false,
+          "fallback": true,
+          "latency_ms": 181,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-35",
+          "query": "Which product earned the most revenue this month?",
+          "gold": [
+            "data"
+          ],
+          "predicted": [
+            "data",
+            "policy",
+            "reviews"
+          ],
+          "exact": false,
+          "fallback": true,
+          "latency_ms": 68,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-37",
+          "query": "How are my sales today?",
+          "gold": [
+            "data"
+          ],
+          "predicted": [
+            "data",
+            "policy",
+            "reviews"
+          ],
+          "exact": false,
+          "fallback": true,
+          "latency_ms": 4002,
+          "few_shot": false
+        }
+      ],
+      "deferred": [
+        {
+          "id": "SQ-05",
+          "query": "Notify me every Friday about my best-sellers running low.",
+          "gold": [
+            "data"
+          ],
+          "predicted": [
+            "data"
+          ],
+          "exact": true,
+          "fallback": false,
+          "latency_ms": 478,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-16",
+          "query": "Keep my review replies short and warm, and never use emojis.",
+          "gold": [
+            "reviews"
+          ],
+          "predicted": [
+            "reviews"
+          ],
+          "exact": true,
+          "fallback": false,
+          "latency_ms": 527,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-22",
+          "query": "Actually, only flag things when they drop under 3 units.",
+          "gold": [],
+          "predicted": [
+            "data",
+            "policy",
+            "reviews"
+          ],
+          "exact": false,
+          "fallback": true,
+          "latency_ms": 77,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-23",
+          "query": "Write me a restock reminder for the ones that are nearly gone.",
+          "gold": [
+            "data"
+          ],
+          "predicted": [
+            "data",
+            "policy",
+            "reviews"
+          ],
+          "exact": false,
+          "fallback": true,
+          "latency_ms": 73,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-33",
+          "query": "What preferences do you have saved for me?",
+          "gold": [],
+          "predicted": [
+            "data",
+            "policy",
+            "reviews"
+          ],
+          "exact": false,
+          "fallback": true,
+          "latency_ms": 108,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-36",
+          "query": "Which product should I restock first?",
+          "gold": [
+            "data"
+          ],
+          "predicted": [
+            "data",
+            "policy",
+            "reviews"
+          ],
+          "exact": false,
+          "fallback": true,
+          "latency_ms": 121,
+          "few_shot": false
+        }
+      ]
+    }
+  ]
+}
