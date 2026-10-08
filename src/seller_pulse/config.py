@@ -12,6 +12,8 @@ DEFAULT_MODEL = "openai/gpt-oss-120b"
 # Eval judge: a different vendor from the agent so it isn't grading its own family.
 # Kimi K2 and qwen3-32b were both off Groq's model list as of 2026-10-05 (see ev-00).
 DEFAULT_JUDGE_MODEL = "qwen/qwen3.8-27b"
+# Query classifier (rt-04). Provisional: rt-05 confirms it or switches to gpt-oss-120b.
+DEFAULT_ROUTER_MODEL = "openai/gpt-oss-20b"
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]  # verified: reaches the repo root
 DATA_DIR = PROJECT_ROOT / "data"
@@ -39,6 +41,7 @@ class Settings:
     chroma_path: Path
     seller_id: str
     judge_model: str = DEFAULT_JUDGE_MODEL
+    router_model: str = DEFAULT_ROUTER_MODEL
 
 
 def load_settings() -> Settings:
@@ -56,4 +59,5 @@ def load_settings() -> Settings:
         chroma_path=Path(os.getenv("CHROMA_PATH") or DEFAULT_CHROMA_PATH),
         seller_id=seller_id,
         judge_model=os.getenv("JUDGE_MODEL") or DEFAULT_JUDGE_MODEL,
+        router_model=os.getenv("ROUTER_MODEL") or DEFAULT_ROUTER_MODEL,
     )

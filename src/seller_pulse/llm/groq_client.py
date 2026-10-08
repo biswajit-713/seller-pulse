@@ -9,12 +9,19 @@ from langchain_core.language_models import BaseChatModel
 
 class GroqLLMClient:
     def __init__(
-        self, *, api_key: str | None, model: str, temperature: float | None = None
+        self,
+        *,
+        api_key: str | None,
+        model: str,
+        temperature: float | None = None,
+        reasoning_effort: str | None = None,
     ) -> None:
         self.api_key = api_key
         self.model = model
         # None → ChatGroq's own default (production); the eval pins 0.
         self.temperature = temperature
+        # None → the model's default; the router pins "low" (gpt-oss only).
+        self.reasoning_effort = reasoning_effort
         self._chat: BaseChatModel | None = None
 
     @property
@@ -23,5 +30,7 @@ class GroqLLMClient:
             from langchain_groq import ChatGroq
 
             kwargs = {} if self.temperature is None else {"temperature": self.temperature}
+            if self.reasoning_effort is not None:
+                kwargs["reasoning_effort"] = self.reasoning_effort
             self._chat = ChatGroq(model=self.model, api_key=self.api_key, **kwargs)
         return self._chat
