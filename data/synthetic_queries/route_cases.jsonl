@@ -1,0 +1,37 @@
+{"id": "SQ-01", "routes": ["data"], "why": "Weekly sales figures from the sales tool."}
+{"id": "SQ-02", "routes": ["data", "reviews"], "why": "Listing + reviews via RAG for the diagnosis; stock and price cross-checked via tools."}
+{"id": "SQ-03", "routes": ["reviews"], "why": "Customer-facing review reply draft; the no-conditional-compensation line is covered by the core tripwire."}
+{"id": "SQ-04", "routes": ["data"], "why": "Low-stock quantities from the inventory tool."}
+{"id": "SQ-05", "routes": ["memory", "data"], "why": "Memory write (Friday alert preference); best-sellers x low stock is tool data."}
+{"id": "SQ-06", "routes": ["policy"], "why": "Review-incentive request; refuse and cite the review-manipulation policy."}
+{"id": "SQ-07", "routes": ["data", "policy"], "why": "Inventory vs listing status cross-check, framed as a compliance finding under the 24-hour deactivation rule."}
+{"id": "SQ-08", "routes": ["data"], "why": "Best-seller by units and revenue from the sales tool."}
+{"id": "SQ-09", "routes": ["data"], "why": "Two period totals from the sales tool, partial-month caveat."}
+{"id": "SQ-10", "routes": ["data"], "why": "Forecast request; the no-fabricated-numbers rule lives in the data module (and the core)."}
+{"id": "SQ-11", "routes": ["data"], "why": "Revenue by category from the sales tool."}
+{"id": "SQ-12", "routes": ["reviews"], "why": "Complaint themes from low-rated reviews."}
+{"id": "SQ-13", "routes": ["reviews"], "why": "Lowest-rated SKUs with sample-size caveat."}
+{"id": "SQ-14", "routes": ["policy"], "why": "Keyword stuffing; listing-content standard refusal. 'Rank higher' does not make it data."}
+{"id": "SQ-15", "routes": ["policy"], "why": "Stock-photo rule applied conditionally to the named listing."}
+{"id": "SQ-16", "routes": ["memory", "reviews"], "why": "Memory write (review-reply tone), applied to later review-reply drafts."}
+{"id": "SQ-17", "routes": ["data"], "why": "Missing day in sales data; degrade to the last confirmed day."}
+{"id": "SQ-18", "routes": ["policy", "reviews"], "why": "Refund conditioned on a rating change is prohibited; the remedy is separated out and the 1-star review identified."}
+{"id": "SQ-19", "routes": ["reviews"], "why": "Review coverage gap across the catalogue, from computed review stats."}
+{"id": "SQ-20", "routes": ["policy"], "why": "Strike-through reference price with no supporting price history; pricing policy refusal."}
+{"id": "SQ-21", "routes": ["reviews"], "why": "Cancellations exist only as buyer complaints in reviews (no orders table); AE-14 forbids the sales tool and only welcomes, not requires, inventory calls."}
+{"id": "SQ-22", "routes": ["memory"], "why": "Memory update: the restock threshold for stock alerts."}
+{"id": "SQ-23", "routes": ["memory", "data"], "why": "Restock reminder from inventory/sales tool figures, using the saved restock threshold for 'nearly gone'."}
+{"id": "SQ-24", "routes": ["data"], "why": "Inventory tool timeout; say so, give no quantities."}
+{"id": "SQ-25", "routes": ["policy", "reviews"], "why": "Unsubstantiated material and delivery claims; refused, with the claims checked against reviews and listing content."}
+{"id": "SQ-26", "routes": ["data"], "why": "Sales velocity joined against stock on hand."}
+{"id": "SQ-27", "routes": ["data"], "why": "Zero-sales SKUs this month, with current stock status."}
+{"id": "SQ-28", "routes": ["data", "reviews", "policy"], "why": "Proactive policy audit across listings, stock and reviews."}
+{"id": "SQ-29", "routes": ["reviews"], "why": "Review reply draft; the refusal to post is the draft-only rule, not a marketplace policy."}
+{"id": "SQ-30", "routes": ["data"], "why": "Sales question about a product that does not exist; must not invent figures."}
+{"id": "SQ-31", "routes": [], "why": "Out of scope (other sellers' data); the core's can't-confirm rule covers it alone."}
+{"id": "SQ-32", "routes": ["reviews"], "why": "Listing description rewrite driven by a size-complaint review; draft awaiting approval."}
+{"id": "SQ-33", "routes": ["memory"], "why": "Memory read: list the saved preferences."}
+{"id": "SQ-34", "routes": ["data"], "why": "Week-over-week comparison from the sales tool."}
+{"id": "SQ-35", "routes": ["data"], "why": "Top product by revenue this month from the sales tool."}
+{"id": "SQ-36", "routes": ["memory", "data"], "why": "Restock priority from velocity x stock, applying the saved restock threshold."}
+{"id": "SQ-37", "routes": ["data"], "why": "Sales tool timeout; fall back to the last confirmed day."}
