@@ -186,21 +186,23 @@ def mentioned_rating(question: str) -> int | None:
     return ratings.pop() if len(ratings) == 1 else None
 
 
-class Route(StrEnum):
+class RetrievalMode(StrEnum):
+    """The retrieval shape. Not a prompt route — that is `seller_pulse.router.Route`."""
+
     STATS = "stats"  # aggregate question -> add computed statistics
     GENERAL = "general"  # policy + review similarity only
 
 
-def classify(question: str) -> Route:
+def pick_mode(question: str) -> RetrievalMode:
     tokens = set(re.findall(r"[a-z']+", question.casefold()))
     if tokens & _STATS_HINTS:
-        return Route.STATS
-    return Route.GENERAL
+        return RetrievalMode.STATS
+    return RetrievalMode.GENERAL
 
 
 @dataclass(frozen=True)
 class RetrievalResult:
-    route: Route
+    mode: RetrievalMode
     question: str
     reviews: tuple[Hit, ...] = ()
     policy: tuple[Hit, ...] = ()
@@ -219,15 +221,15 @@ class Retriever:
     def retrieve(self, question: str) -> RetrievalResult:
         from seller_pulse.rag.stats import compute
 
-        route = classify(question)
+        mode = pick_mode(question)
         rating = mentioned_rating(question)
         reviews = self._reviews.search(question, rating=rating) if rating is not None else []
         return RetrievalResult(
-            route=route,
+            mode=mode,
             question=question,
             reviews=tuple(reviews or self._reviews.search(question)),
             policy=tuple(self._policy.search(question)),
-            stats=compute(self._reviews) if route is Route.STATS else None,
+            stats=compute(self._reviews) if mode is RetrievalMode.STATS else None,
         )
 
 

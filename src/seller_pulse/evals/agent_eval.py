@@ -26,6 +26,7 @@ from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from fractions import Fraction
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -33,17 +34,19 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import BaseTool
 
 from seller_pulse.agent import ToolCallRecord
-from seller_pulse.chat import respond
+from seller_pulse.chat import Classifier, respond
 from seller_pulse.config import PROJECT_ROOT, Settings, load_settings
 from seller_pulse.evals.cases import AgentCase, load_cases
 from seller_pulse.evals.checks import CheckResult, Dimension, Groundedness, check_groundedness, run_checks
 from seller_pulse.evals.judge import Attempt, Verdict, judge
+from seller_pulse.llm import get_router_client
 from seller_pulse.llm.base import LLMClient
 from seller_pulse.llm.groq_client import GroqLLMClient
 from seller_pulse.rag.context import render_context
 from seller_pulse.evals.retrieval_eval import HarnessError, check_store
 from seller_pulse.rag.retrieval import Retriever, build_retriever
 from seller_pulse.rag.store import get_client, policy_collection, review_collection
+from seller_pulse.router import Route, classify_query
 from seller_pulse.sanitize import sanitize
 from seller_pulse.tools import build_tools
 
@@ -59,6 +62,7 @@ class Pipeline:
     client: LLMClient
     retriever: Retriever
     tools: list[BaseTool]
+    classify: Classifier
     judge_model: BaseChatModel
 
 
@@ -67,6 +71,8 @@ class CaseRun:
     case: AgentCase
     answer: str
     trace: list[ToolCallRecord]
+    routes: frozenset[Route]
+    route_fallback: bool
     retrieved_context: str
     checks: list[CheckResult]  # the case's checks, then the automatic groundedness check
     groundedness: Groundedness
@@ -120,7 +126,12 @@ def resolve_dimensions(
 async def run_case(case: AgentCase, pipeline: Pipeline) -> CaseRun:
     started = time.perf_counter()
     result = await respond(
-        case.message, None, client=pipeline.client, retriever=pipeline.retriever, tools=pipeline.tools
+        case.message,
+        None,
+        client=pipeline.client,
+        retriever=pipeline.retriever,
+        tools=pipeline.tools,
+        classify=pipeline.classify,
     )
     latency_ms = round((time.perf_counter() - started) * 1000)
     # The same block `respond` put in the system prompt — retrieval is deterministic for a
@@ -145,6 +156,8 @@ async def run_case(case: AgentCase, pipeline: Pipeline) -> CaseRun:
         case=case,
         answer=result.text,
         trace=result.trace,
+        routes=result.routes,
+        route_fallback=result.route_fallback,
         retrieved_context=retrieved_context,
         checks=checks,
         groundedness=grounding,
@@ -212,6 +225,8 @@ def case_to_json(run: CaseRun) -> dict[str, Any]:
         "dimensions": run.dimensions,
         "query": run.case.message,
         "must": list(run.case.must),
+        "routes": [r.value for r in sorted(run.routes)],
+        "route_fallback": run.route_fallback,
         "answer": run.answer,
         "retrieved_context": run.retrieved_context,
         "trace": [asdict(r) for r in run.trace],
@@ -236,6 +251,7 @@ def build_report(runs: list[CaseRun], settings: Settings, run_at: datetime) -> d
         "git_sha": _git("rev-parse", "--short", "HEAD") or "unknown",
         "dirty": bool(_git("status", "--porcelain")),
         "agent_model": settings.groq_model,
+        "router_model": settings.router_model,
         "judge_model": settings.judge_model,
         "temperature": TEMPERATURE,
         "threshold": PASS_THRESHOLD,
@@ -259,6 +275,7 @@ def render(run: CaseRun) -> None:
     print(f"{run.case.id}  ({run.case.source_query}, {run.case.bucket}, {run.case.status})  "
           f"{'PASS' if run.passed else 'FAIL'}")
     print(f"query: {run.case.query}")
+    print(f"routes: {[r.value for r in sorted(run.routes)]}" + ("  (fallback)" if run.route_fallback else ""))
     print("  " + "  ".join(f"{d} {_MARK[r]}" for d, r in run.dimensions.items()))
     for check in run.checks:
         if not check.passed:
@@ -311,6 +328,7 @@ def build_pipeline(settings: Settings) -> Pipeline:
         client=GroqLLMClient(api_key=settings.groq_api_key, model=settings.groq_model, temperature=TEMPERATURE),
         retriever=build_retriever(settings),
         tools=build_tools(settings),
+        classify=partial(classify_query, get_router_client(settings).chat_model),
         judge_model=judge_client.chat_model,
     )
 
@@ -373,7 +391,8 @@ def main(argv: list[str] | None = None) -> int:
     run_at = datetime.now()
     if not json_mode:
         print("SellerPulse agent eval")
-        print(f"agent: {settings.groq_model}   judge: {settings.judge_model}   temperature: {TEMPERATURE}")
+        print(f"agent: {settings.groq_model}   router: {settings.router_model}   "
+              f"judge: {settings.judge_model}   temperature: {TEMPERATURE}")
         print(f"cases: {len(cases)}   run: {run_at.isoformat(timespec='seconds')}")
         print()
         print("─" * 66)

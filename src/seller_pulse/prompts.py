@@ -24,7 +24,7 @@ in the tool descriptions; keep it in sync with `docs/tools.md` §5.
 
 from collections.abc import Collection
 
-from seller_pulse.router import ALL_ROUTES, Route
+from seller_pulse.router import Route
 
 TODAY = "2026-09-27"
 DATA_START = "2026-08-03"
@@ -218,6 +218,3 @@ def build_system_prompt(routes: Collection[Route]) -> str:
     parts = [CORE, *(MODULES[r] for r in _MODULE_ORDER if r in selected)]
     return "\n\n".join(parts) + "\n"
 
-
-# Alias for the pre-routing callers (`chat.respond`); removed when routing is wired in (rt-06).
-SYSTEM_PROMPT = build_system_prompt(ALL_ROUTES)

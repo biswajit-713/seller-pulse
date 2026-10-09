@@ -67,7 +67,8 @@ async def run_agent(
     max_steps: int = 5,
 ) -> AgentResult:
     """Run the tool loop for at most ``max_steps`` model calls."""
-    bound = model.bind_tools(tools)
+    # No tools routed (rt-06): call the bare model — an empty `tools` array is not sent.
+    bound = model.bind_tools(tools) if tools else model
     tools_by_name = {tool.name: tool for tool in tools}
     lc_messages = _to_langchain(system, messages)
     records: list[ToolCallRecord] = []

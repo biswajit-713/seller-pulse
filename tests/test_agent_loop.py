@@ -101,3 +101,14 @@ async def test_stops_at_max_steps_with_fallback():
     assert result.text == FALLBACK_TEXT
     assert len(result.tool_calls) == 3
     assert len(model.seen) == 3
+
+
+async def test_no_tools_skips_bind_tools():
+    class Unbindable(ScriptedChatModel):
+        def bind_tools(self, tools):
+            raise AssertionError("bind_tools called with no tools")
+
+    model = Unbindable([AIMessage(content="Plain answer.")])
+    result = await run_agent(model, system="sys", messages=HISTORY, tools=[])
+    assert result.text == "Plain answer."
+    assert len(model.seen) == 1

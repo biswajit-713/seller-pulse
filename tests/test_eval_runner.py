@@ -9,7 +9,8 @@ from seller_pulse.evals.agent_eval import Pipeline, meets_threshold, resolve_dim
 from seller_pulse.evals.cases import AgentCase
 from seller_pulse.evals.checks import CheckKind, CheckResult, Dimension
 from seller_pulse.evals.judge import DimensionVerdict, PointVerdict, SuspectVerdict, Verdict
-from seller_pulse.rag.retrieval import RetrievalResult, Route
+from seller_pulse.rag.retrieval import RetrievalMode, RetrievalResult
+from seller_pulse.router import Route, RouteDecision
 
 PASS = DimensionVerdict(result="pass", reasons=["ok"], missed=[])
 FAIL = DimensionVerdict(result="fail", reasons=["no"], missed=["the caveat"])
@@ -58,7 +59,7 @@ class FakeClient:
 
 class FakeRetriever:
     def retrieve(self, question: str) -> RetrievalResult:
-        return RetrievalResult(route=Route.GENERAL, question=question)
+        return RetrievalResult(mode=RetrievalMode.GENERAL, question=question)
 
 
 class FakeJudgeModel:
@@ -72,9 +73,13 @@ class FakeJudgeModel:
         return self.verdict
 
 
+async def _classify(question, history):
+    return RouteDecision(routes=frozenset({Route.DATA}), fallback=False, latency_ms=1)
+
+
 def _pipeline(replies, verdict=None):
     return Pipeline(
-        client=FakeClient(replies), retriever=FakeRetriever(), tools=[],
+        client=FakeClient(replies), retriever=FakeRetriever(), tools=[], classify=_classify,
         judge_model=FakeJudgeModel(verdict or _verdict()),
     )
 
@@ -146,6 +151,8 @@ async def test_run_case_passes_only_when_no_dimension_fails():
     run = await run_case(_case(checks=[{"kind": "contains_all", "needles": ["fine"]}]), _pipeline(["All fine."]))
     assert run.passed and run.dimensions["accuracy"] == "pass"
     assert "<retrieved_context>" in run.retrieved_context
+    assert run.routes == {Route.DATA} and not run.route_fallback
+    assert agent_eval.case_to_json(run)["routes"] == ["data"]
 
     run = await run_case(_case(), _pipeline(["All fine."], _verdict(points=UNMET)))
     assert not run.passed
@@ -169,7 +176,8 @@ async def test_unclassified_suspect_fails_grounded():
 
 def _run(case, dims):
     return agent_eval.CaseRun(
-        case=case, answer="", trace=[], retrieved_context="", checks=[], groundedness=None,
+        case=case, answer="", trace=[], routes=frozenset(), route_fallback=False, retrieved_context="",
+        checks=[], groundedness=None,
         verdict=_verdict(), dimensions=dims, latency_ms=100,
     )
 

@@ -1,7 +1,7 @@
 """Prompt routing: which prompt modules (and tools) a turn needs (`plan/rt-00-overview.md`).
 
-Not to be confused with `rag.retrieval.Route` (stats / general), which picks the *retrieval*
-shape. That one is renamed when routing is wired into `chat.respond` (rt-06).
+Not to be confused with `rag.retrieval.RetrievalMode` (stats / general), which picks the
+*retrieval* shape; retrieval itself is unconditional and never routed.
 
 `classify_query` (rt-04) is one `with_structured_output` call on a small model. It is
 multi-label (an empty set means core prompt only) and fails open: any exception, timeout or
@@ -17,6 +17,7 @@ from enum import StrEnum
 from typing import Literal
 
 from langchain_core.language_models import BaseChatModel
+from langchain_core.tools import BaseTool
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel
 
@@ -38,6 +39,12 @@ DEFERRED_ROUTES = frozenset({Route.MEMORY})
 
 # Every route that is built. The fail-open answer: a classifier error routes here.
 ALL_ROUTES = frozenset(Route) - DEFERRED_ROUTES
+
+# Tools bound per route, by tool name so the filter survives the MCP swap (w2-11). A tool no
+# route names is never bound.
+ROUTE_TOOLS: dict[Route, frozenset[str]] = {
+    Route.DATA: frozenset({"get_sales_analytics", "check_inventory_status"}),
+}
 
 CLASSIFY_TIMEOUT_S = 4.0
 # Strict JSON-schema output (rt-05): both gpt-oss candidates accept it on Groq, and unlike
@@ -172,3 +179,9 @@ async def classify_query(
     return RouteDecision(
         routes=frozenset(Route(r) for r in answer.routes), fallback=False, latency_ms=_elapsed_ms(start)
     )
+
+
+def tools_for(routes: frozenset[Route], tools: list[BaseTool]) -> list[BaseTool]:
+    """The subset of `tools` the selected routes bind, in their original order."""
+    names = frozenset().union(*(ROUTE_TOOLS.get(r, frozenset()) for r in routes))
+    return [tool for tool in tools if tool.name in names]

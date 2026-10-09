@@ -42,10 +42,11 @@ an API key — anything that would call Groq uses a fake.
 ## Architecture
 
 Request pipeline, sequenced in `chat.py:respond`: `sanitize.py` → `chat.py:to_messages`
-(Gradio history → `{role, content}` messages) → `rag/retrieval.py` + `rag/context.py`
-(retrieved context appended to `prompts.py:SYSTEM_PROMPT`) → `agent.py:run_agent` (async
-model → tool calls → results loop; tools built in `tools.py`, which wraps `sales.py` and
-`inventory.py`). The LLM seam is `llm/base.py:LLMClient`, a `Protocol` exposing one
+(Gradio history → `{role, content}` messages) → `router.py:classify_query` (multi-label
+`data`/`reviews`/`policy`, fails open to all) run concurrently with `rag/retrieval.py` →
+`prompts.py:build_system_prompt(routes)` + `rag/context.py` → `agent.py:run_agent` (async
+model → tool calls → results loop) with only the routed tools (`router.py:tools_for`; tools
+built in `tools.py`, which wraps `sales.py` and `inventory.py`). The LLM seam is `llm/base.py:LLMClient`, a `Protocol` exposing one
 property, `chat_model` (a LangChain `BaseChatModel`, for `bind_tools`); `agent.py` owns the
 `Message` → LangChain translation. `llm/groq_client.py` builds `ChatGroq` lazily.
 `llm/factory.py:get_client` builds `GroqLLMClient` from `Settings.llm_provider`/

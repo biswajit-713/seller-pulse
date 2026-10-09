@@ -2,7 +2,6 @@ from seller_pulse.prompts import (
     CORE,
     DRAFT_LABEL,
     MODULES,
-    SYSTEM_PROMPT,
     build_system_prompt,
 )
 from seller_pulse.router import ALL_ROUTES, Route
@@ -24,10 +23,6 @@ def test_all_routes_contains_every_baseline_heading():
     prompt = build_system_prompt(ALL_ROUTES)
     for heading in BASELINE_HEADINGS:
         assert heading in prompt, heading
-
-
-def test_system_prompt_alias_is_all_routes():
-    assert SYSTEM_PROMPT == build_system_prompt(ALL_ROUTES)
 
 
 def test_core_alone_carries_the_always_on_rules():

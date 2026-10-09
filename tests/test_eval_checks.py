@@ -2,7 +2,8 @@ import pytest
 
 from seller_pulse.agent import ToolCallRecord
 from seller_pulse.evals.checks import CheckKind, Dimension, check_groundedness, run_checks
-from seller_pulse.prompts import SYSTEM_PROMPT
+from seller_pulse.prompts import build_system_prompt
+from seller_pulse.router import ALL_ROUTES
 
 SALES = "get_sales_analytics"
 LAST_WEEK = ToolCallRecord(
@@ -151,6 +152,6 @@ def test_groundedness_query_context_and_allow():
 
 def test_groundedness_system_prompt_wording_is_not_a_source():
     # 2026-09-14 is in the prompt's example wording; only its stated dates are sources.
-    assert "2026-09-14" in SYSTEM_PROMPT
+    assert "2026-09-14" in build_system_prompt(ALL_ROUTES)
     result = _groundedness("Data starts 2026-08-03; week of 2026-09-14.", trace=[])
     assert result.suspects == ["2026-09-14"]
