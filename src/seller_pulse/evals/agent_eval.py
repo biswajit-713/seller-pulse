@@ -1,10 +1,10 @@
 """The live agent eval (ev-05): run each case through the real pipeline, score it, report.
 
-    uv run python -m seller_pulse.evals.agent_eval [--case AE-03 ...] [--json] [--no-report]
+    uv run python -m seller_pulse.evals.agent_eval [--case AE-03 ...] [--delay SECONDS] [--json] [--no-report]
 
 Live, never a pytest test: it needs `GROQ_API_KEY` and the ingested store. The agent runs
 through the same `chat.respond` the app uses — no parallel copy of the pipeline. Cases run
-sequentially (Groq rate limits; 18 cases is small).
+sequentially with a `CASE_DELAY_S` pause between them (Groq rate limits; 18 cases is small).
 
 Per case: `respond` → `run_checks` + `check_groundedness` → `judge` → `resolve_dimensions`.
 A case passes iff no dimension fails. The score is passed / scored cases against
@@ -51,6 +51,8 @@ from seller_pulse.tools import build_tools
 
 PASS_THRESHOLD = 0.8
 TEMPERATURE = 0
+# Pause between cases so a full run stays under Groq's per-minute token limit. `--delay` overrides.
+CASE_DELAY_S = 20.0
 REPORTS_DIR = PROJECT_ROOT / "evals" / "reports"
 DIMENSIONS = tuple(Dimension)
 _MARK = {"pass": "✓", "fail": "✗", "n/a": "–"}
@@ -365,6 +367,19 @@ def _case_filter(argv: list[str]) -> list[str]:
     return ids
 
 
+def _delay(argv: list[str]) -> float:
+    if "--delay" not in argv:
+        return CASE_DELAY_S
+    i = argv.index("--delay")
+    try:
+        delay = float(argv[i + 1])
+    except (IndexError, ValueError):
+        raise HarnessError("--delay needs a number of seconds") from None
+    if delay < 0:
+        raise HarnessError("--delay must be ≥ 0")
+    return delay
+
+
 def select_cases(cases: list[AgentCase], ids: list[str]) -> list[AgentCase]:
     if not ids:
         return cases
@@ -382,9 +397,14 @@ def _fail(message: str, json_mode: bool) -> int:
     return 2
 
 
-async def run_eval(cases: list[AgentCase], pipeline: Pipeline, *, json_mode: bool) -> list[CaseRun]:
+async def run_eval(
+    cases: list[AgentCase], pipeline: Pipeline, *, json_mode: bool, delay_s: float = 0
+) -> list[CaseRun]:
     runs = []
-    for case in cases:
+    for i, case in enumerate(cases):
+        if i and delay_s:
+            # Outside run_case, so the pause never lands in a case's latency_ms.
+            await asyncio.sleep(delay_s)
         try:
             run = await run_case(case, pipeline)
         except Exception as exc:  # noqa: BLE001 - an agent/Groq error aborts the run (exit 2)
@@ -406,6 +426,7 @@ def main(argv: list[str] | None = None) -> int:
         if not settings.groq_api_key:
             raise HarnessError("GROQ_API_KEY is not set — the agent eval calls Groq live")
         cases = select_cases(load_cases(), _case_filter(argv))
+        delay_s = _delay(argv)
         pipeline = build_pipeline(settings)
     except Exception as exc:  # noqa: BLE001 - this boundary converts any setup failure to exit 2
         return _fail(f"could not run agent eval: {exc}", json_mode)
@@ -416,12 +437,12 @@ def main(argv: list[str] | None = None) -> int:
         router = settings.router_model if settings.routing else "off"
         print(f"agent: {settings.groq_model}   router: {router}   "
               f"judge: {settings.judge_model}   temperature: {TEMPERATURE}")
-        print(f"cases: {len(cases)}   run: {run_at.isoformat(timespec='seconds')}")
+        print(f"cases: {len(cases)}   delay: {delay_s:g}s   run: {run_at.isoformat(timespec='seconds')}")
         print()
         print("─" * 66)
 
     try:
-        runs = asyncio.run(run_eval(cases, pipeline, json_mode=json_mode))
+        runs = asyncio.run(run_eval(cases, pipeline, json_mode=json_mode, delay_s=delay_s))
     except HarnessError as exc:
         return _fail(f"agent eval aborted: {exc}", json_mode)
 

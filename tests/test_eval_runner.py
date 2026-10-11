@@ -229,6 +229,7 @@ def harness(monkeypatch, tmp_path):
     monkeypatch.setattr(agent_eval, "load_settings", lambda: SETTINGS)
     monkeypatch.setattr(agent_eval, "load_cases", lambda: cases)
     monkeypatch.setattr(agent_eval, "REPORTS_DIR", tmp_path / "reports")
+    monkeypatch.setattr(agent_eval, "CASE_DELAY_S", 0)
 
     def use(passing: int):
         replies = ["All fine."] * passing + ["Nope."] * (15 - passing) + ["Gap."]
