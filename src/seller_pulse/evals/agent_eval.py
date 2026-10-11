@@ -22,7 +22,7 @@ import statistics
 import subprocess
 import sys
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from fractions import Fraction
@@ -40,6 +40,7 @@ from seller_pulse.evals.checks import CheckResult, Dimension, Groundedness, chec
 from seller_pulse.evals.judge import Attempt, Verdict, judge
 from seller_pulse.llm.base import LLMClient
 from seller_pulse.llm.groq_client import GroqLLMClient
+from seller_pulse.prompts import build_system_prompt
 from seller_pulse.rag.context import render_context
 from seller_pulse.evals.retrieval_eval import HarnessError, check_store
 from seller_pulse.rag.retrieval import Retriever, build_retriever
@@ -62,6 +63,8 @@ class Pipeline:
     tools: list[BaseTool]
     classify: Classifier
     judge_model: BaseChatModel
+    # Tokens in a string. o200k_base in a real run; injectable so tests needn't fetch the encoding.
+    count_tokens: Callable[[str], int]
 
 
 @dataclass(frozen=True)
@@ -77,6 +80,8 @@ class CaseRun:
     verdict: Verdict
     dimensions: dict[str, str]
     latency_ms: int
+    # The routed system prompt only (before RAG context, tool schemas, history) — rt-01's measure.
+    system_prompt_tokens: int
 
     @property
     def passed(self) -> bool:
@@ -162,6 +167,7 @@ async def run_case(case: AgentCase, pipeline: Pipeline) -> CaseRun:
         verdict=verdict,
         dimensions=resolve_dimensions(checks, verdict, grounding.suspects, case.must),
         latency_ms=latency_ms,
+        system_prompt_tokens=pipeline.count_tokens(build_system_prompt(result.routes)),
     )
 
 
@@ -189,6 +195,7 @@ def summarize(runs: list[CaseRun]) -> dict[str, Any]:
         bucket["total"] += 1
         bucket["passed"] += r.passed
     latencies = [r.latency_ms for r in runs]
+    prompt_tokens = [r.system_prompt_tokens for r in runs]
     return {
         "score": {
             "passed": passed,
@@ -201,6 +208,10 @@ def summarize(runs: list[CaseRun]) -> dict[str, Any]:
         "latency_ms": {
             "p50": round(statistics.median(latencies)) if latencies else None,
             "max": max(latencies, default=None),
+        },
+        "system_prompt_tokens": {
+            "mean": round(statistics.mean(prompt_tokens)) if prompt_tokens else None,
+            "max": max(prompt_tokens, default=None),
         },
     }
 
@@ -232,6 +243,7 @@ def case_to_json(run: CaseRun) -> dict[str, Any]:
         "groundedness": {"ungrounded_ids": run.groundedness.ungrounded_ids, "suspects": run.groundedness.suspects},
         "verdict": run.verdict.model_dump(),
         "latency_ms": run.latency_ms,
+        "system_prompt_tokens": run.system_prompt_tokens,
     }
 
 
@@ -313,6 +325,8 @@ def render_footer(summary: dict[str, Any]) -> None:
     print(" · ".join(f"{d} {v['passed']}/{v['applicable']}" for d, v in summary["dimensions"].items()))
     buckets = " · ".join(f"{b} {v['passed']}/{v['total']}" for b, v in summary["buckets"].items())
     print(f"{buckets} · latency p50 {_seconds(latency['p50'])} max {_seconds(latency['max'])}")
+    tokens = summary["system_prompt_tokens"]
+    print(f"system prompt tokens mean {tokens['mean']} max {tokens['max']}")
     print(f"RESULT: {'PASS' if meets_threshold(score['passed'], score['scored']) else 'FAIL'}")
 
 
@@ -329,7 +343,16 @@ def build_pipeline(settings: Settings) -> Pipeline:
         tools=build_tools(settings),
         classify=build_classifier(settings),
         judge_model=judge_client.chat_model,
+        count_tokens=_o200k_counter(),
     )
+
+
+def _o200k_counter() -> Callable[[str], int]:
+    """gpt-oss's tokenizer. tiktoken is a dev dependency, like the rest of the eval tooling."""
+    import tiktoken
+
+    encoding = tiktoken.get_encoding("o200k_base")
+    return lambda text: len(encoding.encode(text))
 
 
 def _case_filter(argv: list[str]) -> list[str]:

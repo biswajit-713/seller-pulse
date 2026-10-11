@@ -80,7 +80,7 @@ async def _classify(question, history):
 def _pipeline(replies, verdict=None):
     return Pipeline(
         client=FakeClient(replies), retriever=FakeRetriever(), tools=[], classify=_classify,
-        judge_model=FakeJudgeModel(verdict or _verdict()),
+        judge_model=FakeJudgeModel(verdict or _verdict()), count_tokens=len,
     )
 
 
@@ -171,14 +171,21 @@ async def test_unclassified_suspect_fails_grounded():
     assert run.dimensions["grounded"] == "fail"
 
 
+async def test_run_case_counts_the_routed_system_prompt():
+    from seller_pulse.prompts import build_system_prompt
+
+    run = await run_case(_case(), _pipeline(["All fine."]))
+    assert run.system_prompt_tokens == len(build_system_prompt({Route.DATA}))  # count_tokens=len
+
+
 # --- summarize
 
 
-def _run(case, dims):
+def _run(case, dims, system_prompt_tokens=1000):
     return agent_eval.CaseRun(
         case=case, answer="", trace=[], routes=frozenset(), route_fallback=False, retrieved_context="",
         checks=[], groundedness=None,
-        verdict=_verdict(), dimensions=dims, latency_ms=100,
+        verdict=_verdict(), dimensions=dims, latency_ms=100, system_prompt_tokens=system_prompt_tokens,
     )
 
 
@@ -239,13 +246,13 @@ def test_exit_0_at_threshold_and_report_written(harness, capsys):
     report = json.loads(path.read_text())
     assert path.name.endswith(f"-{report['git_sha']}.json")
     assert {"run_at", "git_sha", "dirty", "agent_model", "judge_model", "temperature", "threshold", "score",
-            "known_gap", "dimensions", "buckets", "latency_ms", "cases"} <= report.keys()
+            "known_gap", "dimensions", "buckets", "latency_ms", "system_prompt_tokens", "cases"} <= report.keys()
     assert report["score"] == {"passed": 12, "scored": 15, "rate": 0.8}
     assert report["known_gap"]["total"] == 1
     assert [c["id"] for c in report["cases"]][-1] == "AE-16"
     case = report["cases"][0]
     assert {"id", "source_query", "bucket", "status", "passed", "dimensions", "answer", "retrieved_context",
-            "trace", "checks", "groundedness", "verdict", "latency_ms"} <= case.keys()
+            "trace", "checks", "groundedness", "verdict", "latency_ms", "system_prompt_tokens"} <= case.keys()
 
 
 def test_exit_1_below_threshold(harness):
@@ -275,3 +282,8 @@ def test_missing_api_key_is_exit_2(monkeypatch, capsys):
     monkeypatch.setattr(agent_eval, "load_settings", lambda: Settings(**{**SETTINGS.__dict__, "groq_api_key": None}))
     assert agent_eval.main(["--no-report"]) == 2
     assert "GROQ_API_KEY" in capsys.readouterr().out
+
+
+def test_summary_system_prompt_tokens_mean_and_max():
+    runs = [_run(_case("AE-01"), ALL_PASS, 1000), _run(_case("AE-02"), ALL_PASS, 2001)]
+    assert summarize(runs)["system_prompt_tokens"] == {"mean": 1500, "max": 2001}
