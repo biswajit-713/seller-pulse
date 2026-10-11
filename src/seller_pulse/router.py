@@ -12,8 +12,10 @@ and an extra module only costs tokens.
 import asyncio
 import logging
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from enum import StrEnum
+from functools import partial
 from typing import Literal
 
 from langchain_core.language_models import BaseChatModel
@@ -21,6 +23,8 @@ from langchain_core.tools import BaseTool
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel
 
+from seller_pulse.config import Settings
+from seller_pulse.llm import get_router_client
 from seller_pulse.llm.base import Message
 
 logger = logging.getLogger(__name__)
@@ -179,6 +183,21 @@ async def classify_query(
     return RouteDecision(
         routes=frozenset(Route(r) for r in answer.routes), fallback=False, latency_ms=_elapsed_ms(start)
     )
+
+
+async def route_all(question: str, history: list[Message]) -> RouteDecision:
+    """ROUTING=off: the monolithic prompt — every module, every tool, no model call.
+
+    Not a fallback: nothing failed, so `fallback=False`.
+    """
+    return RouteDecision(routes=ALL_ROUTES, fallback=False, latency_ms=0)
+
+
+def build_classifier(settings: Settings) -> Callable[[str, list[Message]], Awaitable[RouteDecision]]:
+    """The classifier `chat.respond` takes, per `Settings.routing`."""
+    if not settings.routing:
+        return route_all
+    return partial(classify_query, get_router_client(settings).chat_model)
 
 
 def tools_for(routes: frozenset[Route], tools: list[BaseTool]) -> list[BaseTool]:

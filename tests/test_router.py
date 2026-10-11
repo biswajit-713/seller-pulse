@@ -14,8 +14,10 @@ from seller_pulse.router import (
     HISTORY_CHARS,
     Route,
     RouteSchema,
+    build_classifier,
     build_messages,
     classify_query,
+    route_all,
 )
 
 
@@ -156,3 +158,47 @@ def test_router_client_is_deterministic_and_low_effort(monkeypatch):
         "model": DEFAULT_ROUTER_MODEL, "api_key": "k", "temperature": 0, "reasoning_effort": "low",
     }
     assert get_router_client(load_settings(), model="other").chat_model.kwargs["model"] == "other"
+
+
+async def test_route_all_is_every_route_without_fallback():
+    decision = await route_all("anything", [])
+    assert decision.routes == ALL_ROUTES
+    assert decision.fallback is False
+    assert decision.latency_ms == 0
+
+
+def test_routing_defaults_on(monkeypatch):
+    monkeypatch.setenv("SELLER_ID", "SELLER-001")
+    monkeypatch.delenv("ROUTING", raising=False)
+    assert load_settings().routing is True
+
+
+@pytest.mark.parametrize("value, expected", [("on", True), ("off", False), (" OFF ", False), ("", True)])
+def test_routing_honours_env(monkeypatch, value, expected):
+    monkeypatch.setenv("SELLER_ID", "SELLER-001")
+    monkeypatch.setenv("ROUTING", value)
+    assert load_settings().routing is expected
+
+
+def test_routing_rejects_unknown_value(monkeypatch):
+    monkeypatch.setenv("SELLER_ID", "SELLER-001")
+    monkeypatch.setenv("ROUTING", "false")
+    with pytest.raises(ValueError, match="ROUTING"):
+        load_settings()
+
+
+def test_build_classifier_off_skips_the_router_model(monkeypatch):
+    monkeypatch.setattr(langchain_groq, "ChatGroq", FakeChatGroq)
+    monkeypatch.setenv("SELLER_ID", "SELLER-001")
+    monkeypatch.setenv("ROUTING", "off")
+    assert build_classifier(load_settings()) is route_all
+
+
+async def test_build_classifier_on_binds_the_router_model(monkeypatch):
+    monkeypatch.setattr(langchain_groq, "ChatGroq", FakeChatGroq)
+    monkeypatch.setenv("SELLER_ID", "SELLER-001")
+    monkeypatch.setenv("GROQ_API_KEY", "k")
+    monkeypatch.setenv("ROUTING", "on")
+    classify = build_classifier(load_settings())
+    assert classify.func is classify_query
+    assert classify.args[0].kwargs["model"] == DEFAULT_ROUTER_MODEL

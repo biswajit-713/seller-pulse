@@ -26,7 +26,6 @@ from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from fractions import Fraction
-from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -39,14 +38,13 @@ from seller_pulse.config import PROJECT_ROOT, Settings, load_settings
 from seller_pulse.evals.cases import AgentCase, load_cases
 from seller_pulse.evals.checks import CheckResult, Dimension, Groundedness, check_groundedness, run_checks
 from seller_pulse.evals.judge import Attempt, Verdict, judge
-from seller_pulse.llm import get_router_client
 from seller_pulse.llm.base import LLMClient
 from seller_pulse.llm.groq_client import GroqLLMClient
 from seller_pulse.rag.context import render_context
 from seller_pulse.evals.retrieval_eval import HarnessError, check_store
 from seller_pulse.rag.retrieval import Retriever, build_retriever
 from seller_pulse.rag.store import get_client, policy_collection, review_collection
-from seller_pulse.router import Route, classify_query
+from seller_pulse.router import Route, build_classifier
 from seller_pulse.sanitize import sanitize
 from seller_pulse.tools import build_tools
 
@@ -251,7 +249,8 @@ def build_report(runs: list[CaseRun], settings: Settings, run_at: datetime) -> d
         "git_sha": _git("rev-parse", "--short", "HEAD") or "unknown",
         "dirty": bool(_git("status", "--porcelain")),
         "agent_model": settings.groq_model,
-        "router_model": settings.router_model,
+        "routing": settings.routing,
+        "router_model": settings.router_model if settings.routing else None,
         "judge_model": settings.judge_model,
         "temperature": TEMPERATURE,
         "threshold": PASS_THRESHOLD,
@@ -328,7 +327,7 @@ def build_pipeline(settings: Settings) -> Pipeline:
         client=GroqLLMClient(api_key=settings.groq_api_key, model=settings.groq_model, temperature=TEMPERATURE),
         retriever=build_retriever(settings),
         tools=build_tools(settings),
-        classify=partial(classify_query, get_router_client(settings).chat_model),
+        classify=build_classifier(settings),
         judge_model=judge_client.chat_model,
     )
 
@@ -391,7 +390,8 @@ def main(argv: list[str] | None = None) -> int:
     run_at = datetime.now()
     if not json_mode:
         print("SellerPulse agent eval")
-        print(f"agent: {settings.groq_model}   router: {settings.router_model}   "
+        router = settings.router_model if settings.routing else "off"
+        print(f"agent: {settings.groq_model}   router: {router}   "
               f"judge: {settings.judge_model}   temperature: {TEMPERATURE}")
         print(f"cases: {len(cases)}   run: {run_at.isoformat(timespec='seconds')}")
         print()

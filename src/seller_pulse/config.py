@@ -43,6 +43,15 @@ class Settings:
     seller_id: str
     judge_model: str = DEFAULT_JUDGE_MODEL
     router_model: str = DEFAULT_ROUTER_MODEL
+    # ROUTING=off (rt-07's revert path): no classifier call, every module and every tool.
+    routing: bool = True
+
+
+def _load_routing() -> bool:
+    value = (os.getenv("ROUTING") or "on").strip().lower()
+    if value not in ("on", "off"):
+        raise ValueError(f"ROUTING must be 'on' or 'off', got {value!r}.")
+    return value == "on"
 
 
 def load_settings() -> Settings:
@@ -61,4 +70,5 @@ def load_settings() -> Settings:
         seller_id=seller_id,
         judge_model=os.getenv("JUDGE_MODEL") or DEFAULT_JUDGE_MODEL,
         router_model=os.getenv("ROUTER_MODEL") or DEFAULT_ROUTER_MODEL,
+        routing=_load_routing(),
     )
