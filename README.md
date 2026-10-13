@@ -107,3 +107,16 @@ Exit codes: `0` gate met, `1` gate missed, `2` could not run.
 
 To run the app or the agent eval without the classifier (all modules, every tool), set
 `ROUTING=off` in `.env`.
+
+## Agent eval
+
+```bash
+uv run python -m seller_pulse.evals.agent_eval [--case AE-NN ...] [--delay S] [--json] [--no-report]
+```
+
+Runs 18 synthetic queries end to end (router → retrieval → agent → tools) and scores each on
+four dimensions: `tool_use`, `accuracy`, `grounded`, `behavior`. Scoring mixes deterministic
+checks with an LLM judge. Live Groq calls; needs `GROQ_API_KEY` and an ingested store. Pass
+threshold is 80% of the 15 scored cases. Exit codes: `0` met, `1` below, `2` could not run.
+A full run uses much of the agent model's daily Groq token budget, so use `--case` while
+iterating. See [`docs/evals.md`](docs/evals.md) for the scoring rules and the baseline.

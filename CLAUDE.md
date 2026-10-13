@@ -34,6 +34,7 @@ uv sync                          # install/update deps into .venv
 cp .env.example .env             # first-time setup; set GROQ_API_KEY (LLM_PROVIDER=groq) and SELLER_ID (required); ROUTER_MODEL optional (blank → DEFAULT_ROUTER_MODEL), ROUTING=on|off (default on)
 uv run python -m seller_pulse    # run the app — Gradio chat at http://localhost:7860
 uv run pytest                    # run tests (dev group: pytest, pytest-asyncio; asyncio_mode=auto)
+uv run python -m seller_pulse.evals.agent_eval [--case AE-NN]  # live end-to-end eval, see docs/evals.md; full run eats Groq daily quota
 ```
 
 No lint or format tooling is configured yet (no ruff in `pyproject.toml`) — don't assume
