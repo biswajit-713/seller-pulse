@@ -13,7 +13,8 @@ it to see what stage a given piece of code belongs to (Week 1: RAG + UI only; We
 Currently implemented: the Gradio chat UI; RAG ingestion + retrieval (`rag/`), whose
 context is injected into the system prompt; and a tool-calling loop (`agent.py`) over two
 local tools (`get_sales_analytics`, `check_inventory_status`), calling a real model through
-LangChain's `ChatGroq`. MCP, memory, and guardrails are not wired up yet — the in-progress
+LangChain's `ChatGroq`, with prompt routing (`router.py`: a classifier picks the system-prompt
+modules and tools per turn; `ROUTING=off` disables it). MCP, memory, and guardrails are not wired up yet — the in-progress
 build sequence lives in `plan/` (`STATUS.md` + the `w2-*` files are the active thread).
 `plan/` is gitignored, so it never shows up in `git diff` or in a
 commit — don't assume its absence from `git status` means it's untracked-and-safe-to-ignore.
@@ -30,7 +31,7 @@ supersedes — treat the code as the source of truth and flag the stale doc to t
 
 ```bash
 uv sync                          # install/update deps into .venv
-cp .env.example .env             # first-time setup; set GROQ_API_KEY (LLM_PROVIDER=groq) and SELLER_ID (required)
+cp .env.example .env             # first-time setup; set GROQ_API_KEY (LLM_PROVIDER=groq) and SELLER_ID (required); ROUTER_MODEL optional (blank → DEFAULT_ROUTER_MODEL), ROUTING=on|off (default on)
 uv run python -m seller_pulse    # run the app — Gradio chat at http://localhost:7860
 uv run pytest                    # run tests (dev group: pytest, pytest-asyncio; asyncio_mode=auto)
 ```

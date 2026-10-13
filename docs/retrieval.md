@@ -77,6 +77,17 @@ reverted prototype and is stale; the live, current measurement is **0.008**, and
 harness run above measured it at 0.00877 — drifting further from `warn_below: 0.004`, not
 towards it, so the trend is healthy.
 
+## Prompt routing and retrieval
+
+Prompt routing (`router.py`) trims the *rules* a turn gets: a classifier picks which
+system-prompt modules (`data` / `reviews` / `policy`) and tools to load. It does not trim what is
+*retrieved*. Review and policy search still run on every turn, alongside the classifier, and
+their hits are rendered into `<retrieved_context>` whatever the routes are. That is deliberate:
+requests that break a rule often contain no policy vocabulary (SQ-14, SQ-25), so a misroute must
+not also cost the clause. The core prompt's policy tripwire relies on that clause being in the
+context block. Whether to stop *rendering* policy hits on turns not routed to `policy` is an open
+question in `plan/rt-00-overview.md`.
+
 ## The standing limit
 
 Dense retrieval answers *"what does the data say about X"*. It cannot answer *"how many"* or

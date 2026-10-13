@@ -80,3 +80,30 @@ Pass `--json` to emit one JSON object per case instead of the human-readable log
 or a baseline report. See [`docs/retrieval.md`](docs/retrieval.md) for the measured scores and
 what the five Tier 1 queries this checks actually cover, and
 [`docs/verification.md`](docs/verification.md) for the manual verification pass this feeds into.
+
+## Route eval
+
+```bash
+uv run python -m seller_pulse.evals.route_eval [--model X] [--runs N] [--pace S] [--json] [--no-report]
+```
+
+Each turn, a small classifier (`router.classify_query`, model `ROUTER_MODEL`) picks which system
+prompt modules (`data` / `reviews` / `policy`) and tools to load. This eval scores that
+classifier against the gold route sets in `data/synthetic_queries/route_cases.jsonl`. It makes
+live Groq calls and needs `GROQ_API_KEY`. Calls are spaced out (`--pace`) to stay under Groq's
+per-minute token limit. Run it whenever the classifier prompt, its few-shot examples, or
+`ROUTER_MODEL` change.
+
+**The gate** must hold on every run:
+- **`policy` recall is 100%.** Missing `policy` on a request that breaks a rule is the
+  expensive mistake.
+- **`data` recall is at least 95%.**
+- **No fallbacks.** On an error or timeout the classifier routes to everything, which would
+  hide a classifier problem.
+
+Cases labelled `memory` are reported separately and don't count toward the gate.
+
+Exit codes: `0` gate met, `1` gate missed, `2` could not run.
+
+To run the app or the agent eval without the classifier (all modules, every tool), set
+`ROUTING=off` in `.env`.
