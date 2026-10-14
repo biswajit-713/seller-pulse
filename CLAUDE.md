@@ -12,9 +12,10 @@ it to see what stage a given piece of code belongs to (Week 1: RAG + UI only; We
 
 Currently implemented: the Gradio chat UI; RAG ingestion + retrieval (`rag/`), whose
 context is injected into the system prompt; and a tool-calling loop (`agent.py`) over two
-local tools (`get_sales_analytics`, `check_inventory_status`), calling a real model through
+tools (`get_sales_analytics`, `check_inventory_status`), which the app loads from its own
+stdio MCP server (`mcp_server.py`, via `mcp_tools.py`), calling a real model through
 LangChain's `ChatGroq`, with prompt routing (`router.py`: a classifier picks the system-prompt
-modules and tools per turn; `ROUTING=off` disables it). MCP, memory, and guardrails are not wired up yet — the in-progress
+modules and tools per turn; `ROUTING=off` disables it). Memory and guardrails are not wired up yet — the in-progress
 build sequence lives in `plan/` (`STATUS.md` + the `w2-*` files are the active thread).
 `plan/` is gitignored, so it never shows up in `git diff` or in a
 commit — don't assume its absence from `git status` means it's untracked-and-safe-to-ignore.
@@ -47,8 +48,11 @@ Request pipeline, sequenced in `chat.py:respond`: `sanitize.py` → `chat.py:to_
 (Gradio history → `{role, content}` messages) → `router.py:classify_query` (multi-label
 `data`/`reviews`/`policy`, fails open to all) run concurrently with `rag/retrieval.py` →
 `prompts.py:build_system_prompt(routes)` + `rag/context.py` → `agent.py:run_agent` (async
-model → tool calls → results loop) with only the routed tools (`router.py:tools_for`; tools
-built in `tools.py`, which wraps `sales.py` and `inventory.py`). The LLM seam is `llm/base.py:LLMClient`, a `Protocol` exposing one
+model → tool calls → results loop) with only the routed tools (`router.py:tools_for`). Tools
+wrap `sales.py` and `inventory.py` twice, sharing names and descriptions: `tools.py` (in-process;
+tests and the agent eval) and `mcp_server.py` (stdio; the app loads it through
+`mcp_tools.py:load_mcp_tools`, a fresh server subprocess per call, results parsed back into
+the envelope dict). The LLM seam is `llm/base.py:LLMClient`, a `Protocol` exposing one
 property, `chat_model` (a LangChain `BaseChatModel`, for `bind_tools`); `agent.py` owns the
 `Message` → LangChain translation. `llm/groq_client.py` builds `ChatGroq` lazily.
 `llm/factory.py:get_client` builds `GroqLLMClient` from `Settings.llm_provider`/

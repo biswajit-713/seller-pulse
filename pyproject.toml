@@ -12,6 +12,7 @@ dependencies = [
     "gradio>=6.28.0",
     "python-dotenv>=1.2.3",
     "mcp>=1.30,<2",
+    "langchain-mcp-adapters>=0.3.2",
 ]
 
 [project.scripts]
