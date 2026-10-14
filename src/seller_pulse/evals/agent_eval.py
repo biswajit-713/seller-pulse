@@ -4,9 +4,10 @@
 
 Live, never a pytest test: it needs `GROQ_API_KEY` and the ingested store. The agent runs
 through the same `chat.respond` the app uses — no parallel copy of the pipeline. Cases run
-sequentially with a `CASE_DELAY_S` pause between them (Groq rate limits; 18 cases is small).
+sequentially with a `CASE_DELAY_S` pause between them (Groq rate limits; 20 cases is small).
 
-Per case: `respond` → `run_checks` + `check_groundedness` → `judge` → `resolve_dimensions`.
+Per case: `respond` (with the case's `fault` injected, ev-07) → `run_checks` +
+`check_groundedness` → `judge` → `resolve_dimensions`.
 A case passes iff no dimension fails. The score is passed / scored cases against
 `PASS_THRESHOLD`; known-gap cases run and are reported but don't count. Dimension and bucket
 rates are diagnostic only.
@@ -37,6 +38,7 @@ from seller_pulse.chat import Classifier, respond
 from seller_pulse.config import PROJECT_ROOT, Settings, load_settings
 from seller_pulse.evals.cases import AgentCase, load_cases
 from seller_pulse.evals.checks import CheckResult, Dimension, Groundedness, check_groundedness, run_checks
+from seller_pulse.evals.faults import inject_fault
 from seller_pulse.evals.judge import Attempt, Verdict, judge
 from seller_pulse.llm.base import LLMClient
 from seller_pulse.llm.groq_client import GroqLLMClient
@@ -129,13 +131,14 @@ def resolve_dimensions(
 
 
 async def run_case(case: AgentCase, pipeline: Pipeline) -> CaseRun:
+    tools = inject_fault(pipeline.tools, case.fault) if case.fault else pipeline.tools
     started = time.perf_counter()
     result = await respond(
         case.message,
         None,
         client=pipeline.client,
         retriever=pipeline.retriever,
-        tools=pipeline.tools,
+        tools=tools,
         classify=pipeline.classify,
     )
     latency_ms = round((time.perf_counter() - started) * 1000)
@@ -236,6 +239,7 @@ def case_to_json(run: CaseRun) -> dict[str, Any]:
         "dimensions": run.dimensions,
         "query": run.case.message,
         "must": list(run.case.must),
+        "fault": asdict(run.case.fault) if run.case.fault else None,
         "routes": [r.value for r in sorted(run.routes)],
         "route_fallback": run.route_fallback,
         "answer": run.answer,
@@ -288,6 +292,8 @@ def render(run: CaseRun) -> None:
     print(f"{run.case.id}  ({run.case.source_query}, {run.case.bucket}, {run.case.status})  "
           f"{'PASS' if run.passed else 'FAIL'}")
     print(f"query: {run.case.query}")
+    if fault := run.case.fault:
+        print(f"fault: {fault.tool} → {fault.code}" + (f" when {fault.args}" if fault.args else ""))
     print(f"routes: {[r.value for r in sorted(run.routes)]}" + ("  (fallback)" if run.route_fallback else ""))
     print("  " + "  ".join(f"{d} {_MARK[r]}" for d, r in run.dimensions.items()))
     for check in run.checks:

@@ -46,6 +46,14 @@ def test_query_context_appended_to_message(tmp_path):
     assert not case.scored
 
 
+def test_fault_parsed(tmp_path):
+    fault = {"tool": "get_sales_analytics", "code": "TIMEOUT", "args": {"period": "today"}}
+    [case] = load_cases(*_write(tmp_path, [_case(fault=fault)]))
+    assert case.fault.tool == "get_sales_analytics" and case.fault.args == {"period": ["today"]}
+    [case] = load_cases(*_write(tmp_path, [CASE]))
+    assert case.fault is None
+
+
 def test_groundedness_allow_values(tmp_path):
     allow = [{"value": "21", "why": "query implies three weeks"}]
     [case] = load_cases(*_write(tmp_path, [_case(groundedness_allow=allow)]))
@@ -68,6 +76,8 @@ def test_groundedness_allow_values(tmp_path):
         ([_case(must=[])], "must"),
         ([_case(must="States the window.")], "must"),
         ([_case(must=["ok", " "])], "must"),
+        ([_case(fault={"tool": "get_sales_analytics", "code": "SLOW"})], "malformed fault"),
+        ([_case(fault={"tool": "get_weather", "code": "TIMEOUT"})], "fault tool"),
     ],
 )
 def test_bad_case_file_raises_harness_error(tmp_path, cases, message):
@@ -77,6 +87,6 @@ def test_bad_case_file_raises_harness_error(tmp_path, cases, message):
 
 def test_real_case_file_loads():
     cases = load_cases()
-    assert len(cases) == 18
-    assert sum(c.scored for c in cases) == 15
+    assert len(cases) == 20
+    assert sum(c.scored for c in cases) == 16
     assert DEFAULT_AGENT_CASES_PATH.exists()

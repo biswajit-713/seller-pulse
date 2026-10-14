@@ -3,9 +3,10 @@
 The case file never copies query text: `query`, `query_context`, `expected_behavior`,
 `expected_answer` and `notes` come from the joined `queries.jsonl` record. `must` — the
 judge's complete requirement list for `behavior` — lives in the case file: it is eval-specific,
-distilled from `expected_behavior`. Every problem with
+distilled from `expected_behavior`. An optional `fault` (ev-07, `evals/faults.py`) makes one
+tool fail for that case. Every problem with
 the files — a malformed line, a missing field, an unknown `source_query`, a duplicate id, a
-check `run_checks` would reject — raises `HarnessError`, which the runner maps to exit 2.
+check `run_checks` would reject, a malformed fault or one naming an unknown tool — raises `HarnessError`, which the runner maps to exit 2.
 """
 
 import json
@@ -15,12 +16,15 @@ from pathlib import Path
 
 from seller_pulse.config import DATA_DIR
 from seller_pulse.evals.checks import run_checks
+from seller_pulse.evals.faults import Fault, parse_fault
 from seller_pulse.evals.judge import Rubric
 from seller_pulse.evals.retrieval_eval import DEFAULT_QUERIES_PATH, HarnessError
+from seller_pulse.router import ROUTE_TOOLS
 
 DEFAULT_AGENT_CASES_PATH = DATA_DIR / "synthetic_queries" / "agent_cases.jsonl"
 STATUSES = frozenset({"scored", "known_gap"})
 _REQUIRED = ("id", "source_query", "status", "bucket", "checks", "must", "why")
+TOOL_NAMES = frozenset().union(*ROUTE_TOOLS.values())
 
 
 @dataclass(frozen=True)
@@ -38,6 +42,7 @@ class AgentCase:
     expected_answer: str
     notes: str | None
     groundedness_allow: tuple[str, ...] = ()
+    fault: Fault | None = None
 
     @property
     def scored(self) -> bool:
@@ -92,6 +97,18 @@ def _must(raw: dict, where: str) -> tuple[str, ...]:
     return tuple(must)
 
 
+def _fault(raw: dict, where: str) -> Fault | None:
+    if "fault" not in raw:
+        return None
+    try:
+        fault = parse_fault(raw["fault"])
+    except ValueError as exc:
+        raise HarnessError(f"{where}: malformed fault ({exc})") from exc
+    if fault.tool not in TOOL_NAMES:
+        raise HarnessError(f"{where}: fault tool {fault.tool!r} not one of {sorted(TOOL_NAMES)}")
+    return fault
+
+
 def load_cases(
     cases_path: Path = DEFAULT_AGENT_CASES_PATH, queries_path: Path = DEFAULT_QUERIES_PATH
 ) -> list[AgentCase]:
@@ -132,6 +149,7 @@ def load_cases(
                 expected_answer=query["expected_answer"],
                 notes=query.get("notes"),
                 groundedness_allow=_allow_values(raw, where),
+                fault=_fault(raw, where),
             )
         )
     return cases

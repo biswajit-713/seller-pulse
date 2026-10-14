@@ -39,7 +39,7 @@ unclassified suspect fails.
 first choices, are no longer on Groq. It sees the same retrieved context the agent got. Agent
 and judge both run at temperature 0, in the eval only.
 
-**Threshold:** 80% of scored cases (12/15). Known-gap cases run and are reported but don't
+**Threshold:** 80% of scored cases (13/16). Known-gap cases run and are reported but don't
 count. Dimension and bucket rates are diagnostic.
 
 ## Cases
@@ -66,10 +66,26 @@ count. Dimension and bucket rates are diagnostic.
 | AE-16 | SQ-15 — reuse a stock photo (needs name→SKU) | rag_draft | known_gap |
 | AE-17 | SQ-20 — fake "was $149" price (needs name→SKU + per-SKU sales) | guardrail | known_gap |
 | AE-18 | SQ-30 — velvet cushion sales (needs catalogue search) | sales | known_gap |
+| AE-19 | SQ-24 — low-stock list, inventory tool times out | fault | known_gap |
+| AE-20 | SQ-37 — sales today, `today` call times out | fault | scored |
 
-Not in the file: memory, catalogue-wide inventory, per-SKU/category sales. Tool-timeout cases
-(SQ-24, SQ-37) are deferred to fault injection (`plan/ev-07`); SQ-24 stays known-gap until a
-low-stock list exists.
+Not in the file: memory, catalogue-wide inventory, per-SKU/category sales.
+
+### Fault injection
+
+A case may carry `"fault": {"tool": ..., "code": "TIMEOUT", "args"?: {...}}`. For that case
+the runner swaps the named tool for a stand-in with the same name, description and schema that
+returns `{"ok": false, "error": {"code": "TIMEOUT", ...}}` — the error envelope, not an
+exception (`docs/tools.md` §2). Production code is untouched. `args` limits the fault to
+matching calls (matched the same way as `tool_called`); other calls reach the real tool.
+
+- **AE-20 (SQ-37)** fails only the `today` call, so the agent can fetch 2026-09-25, the last
+  day with data, and report it with its date. It is scored on that fallback.
+- **AE-19 (SQ-24)** fails every inventory call, and no quantity may appear. It stays
+  known-gap: the query needs a low-stock list the app lacks, so the agent may ask for SKUs
+  instead of calling the tool.
+
+The report records each case's `fault`.
 
 ## Exit codes
 
@@ -120,4 +136,6 @@ Earlier runs and the routing A/B are recorded in `plan/rt-00-overview.md`.
   flipped between identical runs during the routing A/B. Re-run a failure before acting on it.
 - **Judge leniency.** One AE-14 pass was a lenient judge (the required note was missing).
   Sanity-read verdicts on any case whose result changes.
-- **No fault injection, no multi-turn cases** (memory needs w2-12+).
+- **No multi-turn cases** (memory needs w2-12+).
+- **Baseline predates AE-19/AE-20.** The 12/15 above is out of the old 15 scored cases; the
+  next full run is out of 16.

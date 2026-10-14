@@ -307,6 +307,7 @@ Both are the "clear error for an unknown one" that `docs/tasks.md` #14's DoD ask
 | `NO_DATA_FOR_PERIOD` | `get_sales_analytics` | The window has zero sales rows for this seller | Say plainly there's no sales data for that period and give the last date that has data. **Never report $0 or zero units.** Offer the last day/period that has data. |
 | `INVALID_SKU` | `check_inventory_status` | The input isn't in `SKU-1234` form | Ask for the SKU code. If the seller gave a product name, say a lookup by name isn't supported yet. |
 | `UNKNOWN_SKU` | `check_inventory_status` | The SKU is well-formed but not in the seller's catalog | Say that SKU isn't in their catalog and ask them to check the code. Don't invent stock figures. |
+| `TIMEOUT` | either | The tool didn't return in time. Not emitted by the in-process tools today; the agent eval injects it (`evals/faults.py`, AE-19/AE-20) ahead of the MCP transport, where it can really happen | Say the check failed and give no figure for what was asked. Sales are dated per row, so a separate, successful call for the last day with data may be reported, dated. Stock has no as-of date, so there is no stock fallback. No code-specific prompt rule yet: the general `ok: false` rule covers it. |
 
 ## 6. Memory tools
 
