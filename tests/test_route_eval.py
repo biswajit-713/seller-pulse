@@ -57,15 +57,13 @@ def test_fallback_fails_the_gate_even_though_it_hits_every_route():
     assert not gate(summary)
 
 
-def test_deferred_cases_are_reported_but_never_scored():
-    deferred = _result(_case("SQ-05", M, D), R)  # would be a data miss if it counted
-    summary = score_run([_result(_case("SQ-01", D), D), deferred])
-    assert summary["cases"] == 1
-    assert summary["routes"]["data"]["recall"]["total"] == 1
-    assert summary["misses"] == []
-    [shown] = summary["deferred"]
-    assert shown["gold"] == ["data"]  # memory removed
-    assert gate(summary)
+def test_missed_memory_fails_the_gate():
+    hit = _result(_case("SQ-22", M), M)
+    assert gate(score_run([hit]))
+    summary = score_run([hit, _result(_case("SQ-05", M, D), D)])  # a stated preference never saved
+    assert summary["routes"]["memory"]["recall"] == {"hits": 1, "total": 2, "rate": 0.5}
+    assert summary["held_out"]["memory_recall"]["total"] == 2
+    assert not gate(summary)
 
 
 def test_few_shot_and_held_out_are_split():
@@ -89,17 +87,15 @@ def test_unstable_lists_only_cases_that_changed():
     assert unstable(runs) == [{"id": "SQ-02", "predicted": [["data", "reviews"], ["data"]]}]
 
 
-def test_real_case_file_has_31_scored_and_6_deferred():
-    cases = load_route_cases()
-    assert sum(not c.deferred for c in cases) == 31
-    assert sorted(c.id for c in cases if c.deferred) == ["SQ-05", "SQ-16", "SQ-22", "SQ-23", "SQ-33", "SQ-36"]
+def test_real_case_file_has_37_scored():
+    assert len(load_route_cases()) == 37
 
 
 class EchoGoldModel:
-    """A perfect classifier: answers each message with its case's gold (minus deferred)."""
+    """A perfect classifier: answers each message with its case's gold."""
 
     def __init__(self, cases):
-        self.gold = {c.message: sorted(r.value for r in c.routes if r in ALL_ROUTES) for c in cases}
+        self.gold = {c.message: sorted(r.value for r in c.routes) for c in cases}
 
     def with_structured_output(self, schema, **kwargs):
         self.schema = schema
@@ -113,7 +109,7 @@ class EchoGoldModel:
 async def test_run_once_through_classify_query_scores_a_perfect_model():
     cases = load_route_cases()
     summary = score_run(await run_once(EchoGoldModel(cases), cases))
-    assert summary["exact"] == {"hits": 31, "total": 31, "rate": 1.0}
+    assert summary["exact"] == {"hits": 37, "total": 37, "rate": 1.0}
     assert summary["fallbacks"] == 0
     assert gate(summary)
 

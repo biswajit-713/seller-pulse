@@ -6,16 +6,13 @@ Live, never a pytest test: it calls Groq. `score_run` and `gate` are pure and py
 with fakes. Each case is classified once per run, sequentially, with no history, through the
 same `classify_query` the app uses — so a fallback counts as `ALL_ROUTES`, as it would live.
 
-Headline metrics cover the non-deferred cases only. Deferred cases (gold carries `memory`,
-which the classifier can't emit) are reported in their own section with `memory` removed from
-gold, and never feed the gate.
-
 Calls are paced (`--pace`, default `PACE_S`): Groq's free tier allows 8,000 tokens/min per
 model and one call is ~600 tokens, so back-to-back calls hit 429s, the SDK's retry backoff
 blows the classifier timeout, and the eval measures the rate limiter instead of the model.
 
-The gate (rt-05's decision rule): `policy` recall = 100% and `data` recall ≥ 95%, on every run,
-with no fallbacks — a fallback routes to everything, so it would "hit" every gold route and
+The gate (rt-05's decision rule, plus w2-13b's `memory` bar): `policy` recall = 100%, `data`
+recall ≥ 95% and `memory` recall = 100% (a miss means a stated preference is never saved), on
+every run, with no fallbacks — a fallback routes to everything, so it would "hit" every gold route and
 say nothing about the classifier.
 Exit codes mirror `agent_eval`: 0 gate met, 1 gate missed, 2 the eval could not run.
 """
@@ -40,7 +37,6 @@ from seller_pulse.evals.route_cases import RouteCase, load_route_cases
 from seller_pulse.llm import get_router_client
 from seller_pulse.router import (
     ALL_ROUTES,
-    DEFERRED_ROUTES,
     FEW_SHOT_IDS,
     STRUCTURED_OUTPUT,
     Route,
@@ -50,8 +46,9 @@ from seller_pulse.router import (
 
 POLICY_RECALL_MIN = Fraction(1)
 DATA_RECALL_MIN = Fraction(95, 100)
+MEMORY_RECALL_MIN = Fraction(1)
 PACE_S = 5.0  # ~12 calls/min × ~600 tokens stays under the 8,000 TPM limit
-ROUTES = sorted(ALL_ROUTES)  # report order: data, policy, reviews
+ROUTES = sorted(ALL_ROUTES)  # report order: data, memory, policy, reviews
 
 
 @dataclass(frozen=True)
@@ -61,8 +58,7 @@ class CaseResult:
 
     @property
     def gold(self) -> frozenset[Route]:
-        """Gold without deferred routes: what the classifier could possibly get right."""
-        return self.case.routes - DEFERRED_ROUTES
+        return self.case.routes
 
     @property
     def predicted(self) -> frozenset[Route]:
@@ -105,6 +101,7 @@ def _subset(results: list[CaseResult]) -> dict[str, Any]:
         "exact": _ratio(sum(r.exact for r in results), len(results)),
         "policy_recall": _recall(results, Route.POLICY),
         "data_recall": _recall(results, Route.DATA),
+        "memory_recall": _recall(results, Route.MEMORY),
     }
 
 
@@ -122,27 +119,24 @@ def result_to_json(result: CaseResult) -> dict[str, Any]:
 
 
 def score_run(results: list[CaseResult]) -> dict[str, Any]:
-    """Every rt-05 metric for one run. Deferred cases are split out, never scored."""
-    scored = [r for r in results if not r.case.deferred]
-    deferred = [r for r in results if r.case.deferred]
-    latencies = [r.decision.latency_ms for r in scored]
+    """Every rt-05 metric for one run."""
+    latencies = [r.decision.latency_ms for r in results]
     return {
-        "cases": len(scored),
-        "policy_recall": _recall(scored, Route.POLICY),
+        "cases": len(results),
+        "policy_recall": _recall(results, Route.POLICY),
         "routes": {
-            r.value: {"precision": _precision(scored, r), "recall": _recall(scored, r)} for r in ROUTES
+            r.value: {"precision": _precision(results, r), "recall": _recall(results, r)} for r in ROUTES
         },
-        "exact": _ratio(sum(r.exact for r in scored), len(scored)),
-        "fallbacks": sum(r.decision.fallback for r in scored),
+        "exact": _ratio(sum(r.exact for r in results), len(results)),
+        "fallbacks": sum(r.decision.fallback for r in results),
         "latency_ms": {
             "mean": round(statistics.fmean(latencies)) if latencies else None,
             "p95": p95(latencies),
             "max": max(latencies, default=None),
         },
-        "few_shot": _subset([r for r in scored if r.case.id in FEW_SHOT_IDS]),
-        "held_out": _subset([r for r in scored if r.case.id not in FEW_SHOT_IDS]),
-        "misses": [result_to_json(r) for r in scored if not r.exact],
-        "deferred": [result_to_json(r) for r in deferred],
+        "few_shot": _subset([r for r in results if r.case.id in FEW_SHOT_IDS]),
+        "held_out": _subset([r for r in results if r.case.id not in FEW_SHOT_IDS]),
+        "misses": [result_to_json(r) for r in results if not r.exact],
     }
 
 
@@ -152,9 +146,13 @@ def _meets(ratio: dict[str, Any], minimum: Fraction) -> bool:
 
 
 def gate(summary: dict[str, Any]) -> bool:
-    """rt-05's decision rule for one run: no fallbacks, all of policy, and ≥ 95% of data."""
-    return summary["fallbacks"] == 0 and _meets(summary["policy_recall"], POLICY_RECALL_MIN) and _meets(
-        summary["routes"][Route.DATA.value]["recall"], DATA_RECALL_MIN
+    """The decision rule for one run: no fallbacks, all of policy and memory, ≥ 95% of data."""
+    routes = summary["routes"]
+    return (
+        summary["fallbacks"] == 0
+        and _meets(summary["policy_recall"], POLICY_RECALL_MIN)
+        and _meets(routes[Route.DATA.value]["recall"], DATA_RECALL_MIN)
+        and _meets(routes[Route.MEMORY.value]["recall"], MEMORY_RECALL_MIN)
     )
 
 
@@ -227,14 +225,11 @@ def render_run(index: int, summary: dict[str, Any]) -> None:
     for name in ("few_shot", "held_out"):
         subset = summary[name]
         print(f"  {name:<8} exact {_pct(subset['exact'])}   policy {_pct(subset['policy_recall'])}   "
-              f"data {_pct(subset['data_recall'])}")
+              f"data {_pct(subset['data_recall'])}   memory {_pct(subset['memory_recall'])}")
     if summary["misses"]:
         print("  misses:")
         for miss in summary["misses"]:
             print(_line(miss))
-    print("  deferred (informational, memory removed from gold):")
-    for result in summary["deferred"]:
-        print(_line(result))
     print()
 
 
@@ -309,12 +304,11 @@ def main(argv: list[str] | None = None) -> int:
         return _fail(f"could not run route eval: {exc}", json_mode)
 
     run_at = datetime.now()
-    scored = sum(not c.deferred for c in cases)
     if not json_mode:
         print("SellerPulse route eval")
         print(f"router: {model_name}   temperature: 0   reasoning_effort: low   "
               f"output: {STRUCTURED_OUTPUT['method']}")
-        print(f"cases: {scored} scored + {len(cases) - scored} deferred   runs: {runs_arg}   pace: {pace_s}s   "
+        print(f"cases: {len(cases)}   runs: {runs_arg}   pace: {pace_s}s   "
               f"run: {run_at.isoformat(timespec='seconds')}")
         print()
         print("─" * 66)
@@ -327,7 +321,8 @@ def main(argv: list[str] | None = None) -> int:
         if len(runs) > 1:
             print(f"unstable across runs: {[f['id'] for f in flips] or 'none'}")
         print(f"RESULT: {'PASS' if report['passed'] else 'FAIL'}  "
-              f"(no fallbacks, policy recall = 100%, data recall ≥ {float(DATA_RECALL_MIN):.0%}, every run)")
+              f"(no fallbacks, policy recall = 100%, data recall ≥ {float(DATA_RECALL_MIN):.0%}, "
+              f"memory recall = 100%, every run)")
     if "--no-report" not in argv:
         path = write_report(report, run_at)
         if not json_mode:

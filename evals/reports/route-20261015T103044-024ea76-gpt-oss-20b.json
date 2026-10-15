@@ -1,0 +1,547 @@
+{
+  "run_at": "2026-10-15T10:30:44",
+  "git_sha": "024ea76",
+  "dirty": true,
+  "router_model": "openai/gpt-oss-20b",
+  "temperature": 0,
+  "reasoning_effort": "low",
+  "structured_output": {
+    "method": "json_schema",
+    "strict": true
+  },
+  "pace_s": 5.0,
+  "gate": {
+    "max_fallbacks": 0,
+    "policy_recall_min": 1.0,
+    "data_recall_min": 0.95
+  },
+  "passed": false,
+  "unstable": [],
+  "runs": [
+    {
+      "cases": 37,
+      "policy_recall": {
+        "hits": 8,
+        "total": 8,
+        "rate": 1.0
+      },
+      "routes": {
+        "data": {
+          "precision": {
+            "hits": 18,
+            "total": 18,
+            "rate": 1.0
+          },
+          "recall": {
+            "hits": 18,
+            "total": 20,
+            "rate": 0.9
+          }
+        },
+        "memory": {
+          "precision": {
+            "hits": 4,
+            "total": 6,
+            "rate": 0.667
+          },
+          "recall": {
+            "hits": 4,
+            "total": 4,
+            "rate": 1.0
+          }
+        },
+        "policy": {
+          "precision": {
+            "hits": 8,
+            "total": 9,
+            "rate": 0.889
+          },
+          "recall": {
+            "hits": 8,
+            "total": 8,
+            "rate": 1.0
+          }
+        },
+        "reviews": {
+          "precision": {
+            "hits": 11,
+            "total": 11,
+            "rate": 1.0
+          },
+          "recall": {
+            "hits": 11,
+            "total": 12,
+            "rate": 0.917
+          }
+        }
+      },
+      "exact": {
+        "hits": 33,
+        "total": 37,
+        "rate": 0.892
+      },
+      "fallbacks": 0,
+      "latency_ms": {
+        "mean": 631,
+        "p95": 1104,
+        "max": 1369
+      },
+      "few_shot": {
+        "cases": 9,
+        "exact": {
+          "hits": 9,
+          "total": 9,
+          "rate": 1.0
+        },
+        "policy_recall": {
+          "hits": 4,
+          "total": 4,
+          "rate": 1.0
+        },
+        "data_recall": {
+          "hits": 3,
+          "total": 3,
+          "rate": 1.0
+        },
+        "memory_recall": {
+          "hits": 1,
+          "total": 1,
+          "rate": 1.0
+        }
+      },
+      "held_out": {
+        "cases": 28,
+        "exact": {
+          "hits": 24,
+          "total": 28,
+          "rate": 0.857
+        },
+        "policy_recall": {
+          "hits": 4,
+          "total": 4,
+          "rate": 1.0
+        },
+        "data_recall": {
+          "hits": 15,
+          "total": 17,
+          "rate": 0.882
+        },
+        "memory_recall": {
+          "hits": 3,
+          "total": 3,
+          "rate": 1.0
+        }
+      },
+      "misses": [
+        {
+          "id": "SQ-23",
+          "query": "Write me a restock reminder for the ones that are nearly gone.",
+          "gold": [
+            "data"
+          ],
+          "predicted": [
+            "memory"
+          ],
+          "exact": false,
+          "fallback": false,
+          "latency_ms": 593,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-25",
+          "query": "Update the jute rug listing to say it's handmade from organic fibres and ships next day.",
+          "gold": [
+            "policy",
+            "reviews"
+          ],
+          "predicted": [
+            "policy"
+          ],
+          "exact": false,
+          "fallback": false,
+          "latency_ms": 378,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-26",
+          "query": "What should I stop restocking?",
+          "gold": [
+            "data"
+          ],
+          "predicted": [
+            "memory"
+          ],
+          "exact": false,
+          "fallback": false,
+          "latency_ms": 724,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-32",
+          "query": "Rewrite my Boho Wall Hanging description to address the size complaints.",
+          "gold": [
+            "reviews"
+          ],
+          "predicted": [
+            "policy",
+            "reviews"
+          ],
+          "exact": false,
+          "fallback": false,
+          "latency_ms": 736,
+          "few_shot": false
+        }
+      ]
+    },
+    {
+      "cases": 37,
+      "policy_recall": {
+        "hits": 8,
+        "total": 8,
+        "rate": 1.0
+      },
+      "routes": {
+        "data": {
+          "precision": {
+            "hits": 18,
+            "total": 18,
+            "rate": 1.0
+          },
+          "recall": {
+            "hits": 18,
+            "total": 20,
+            "rate": 0.9
+          }
+        },
+        "memory": {
+          "precision": {
+            "hits": 4,
+            "total": 6,
+            "rate": 0.667
+          },
+          "recall": {
+            "hits": 4,
+            "total": 4,
+            "rate": 1.0
+          }
+        },
+        "policy": {
+          "precision": {
+            "hits": 8,
+            "total": 9,
+            "rate": 0.889
+          },
+          "recall": {
+            "hits": 8,
+            "total": 8,
+            "rate": 1.0
+          }
+        },
+        "reviews": {
+          "precision": {
+            "hits": 11,
+            "total": 11,
+            "rate": 1.0
+          },
+          "recall": {
+            "hits": 11,
+            "total": 12,
+            "rate": 0.917
+          }
+        }
+      },
+      "exact": {
+        "hits": 33,
+        "total": 37,
+        "rate": 0.892
+      },
+      "fallbacks": 0,
+      "latency_ms": {
+        "mean": 604,
+        "p95": 1016,
+        "max": 1046
+      },
+      "few_shot": {
+        "cases": 9,
+        "exact": {
+          "hits": 9,
+          "total": 9,
+          "rate": 1.0
+        },
+        "policy_recall": {
+          "hits": 4,
+          "total": 4,
+          "rate": 1.0
+        },
+        "data_recall": {
+          "hits": 3,
+          "total": 3,
+          "rate": 1.0
+        },
+        "memory_recall": {
+          "hits": 1,
+          "total": 1,
+          "rate": 1.0
+        }
+      },
+      "held_out": {
+        "cases": 28,
+        "exact": {
+          "hits": 24,
+          "total": 28,
+          "rate": 0.857
+        },
+        "policy_recall": {
+          "hits": 4,
+          "total": 4,
+          "rate": 1.0
+        },
+        "data_recall": {
+          "hits": 15,
+          "total": 17,
+          "rate": 0.882
+        },
+        "memory_recall": {
+          "hits": 3,
+          "total": 3,
+          "rate": 1.0
+        }
+      },
+      "misses": [
+        {
+          "id": "SQ-23",
+          "query": "Write me a restock reminder for the ones that are nearly gone.",
+          "gold": [
+            "data"
+          ],
+          "predicted": [
+            "memory"
+          ],
+          "exact": false,
+          "fallback": false,
+          "latency_ms": 682,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-25",
+          "query": "Update the jute rug listing to say it's handmade from organic fibres and ships next day.",
+          "gold": [
+            "policy",
+            "reviews"
+          ],
+          "predicted": [
+            "policy"
+          ],
+          "exact": false,
+          "fallback": false,
+          "latency_ms": 727,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-26",
+          "query": "What should I stop restocking?",
+          "gold": [
+            "data"
+          ],
+          "predicted": [
+            "memory"
+          ],
+          "exact": false,
+          "fallback": false,
+          "latency_ms": 841,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-32",
+          "query": "Rewrite my Boho Wall Hanging description to address the size complaints.",
+          "gold": [
+            "reviews"
+          ],
+          "predicted": [
+            "policy",
+            "reviews"
+          ],
+          "exact": false,
+          "fallback": false,
+          "latency_ms": 501,
+          "few_shot": false
+        }
+      ]
+    },
+    {
+      "cases": 37,
+      "policy_recall": {
+        "hits": 8,
+        "total": 8,
+        "rate": 1.0
+      },
+      "routes": {
+        "data": {
+          "precision": {
+            "hits": 18,
+            "total": 18,
+            "rate": 1.0
+          },
+          "recall": {
+            "hits": 18,
+            "total": 20,
+            "rate": 0.9
+          }
+        },
+        "memory": {
+          "precision": {
+            "hits": 4,
+            "total": 6,
+            "rate": 0.667
+          },
+          "recall": {
+            "hits": 4,
+            "total": 4,
+            "rate": 1.0
+          }
+        },
+        "policy": {
+          "precision": {
+            "hits": 8,
+            "total": 9,
+            "rate": 0.889
+          },
+          "recall": {
+            "hits": 8,
+            "total": 8,
+            "rate": 1.0
+          }
+        },
+        "reviews": {
+          "precision": {
+            "hits": 11,
+            "total": 11,
+            "rate": 1.0
+          },
+          "recall": {
+            "hits": 11,
+            "total": 12,
+            "rate": 0.917
+          }
+        }
+      },
+      "exact": {
+        "hits": 33,
+        "total": 37,
+        "rate": 0.892
+      },
+      "fallbacks": 0,
+      "latency_ms": {
+        "mean": 576,
+        "p95": 1167,
+        "max": 1391
+      },
+      "few_shot": {
+        "cases": 9,
+        "exact": {
+          "hits": 9,
+          "total": 9,
+          "rate": 1.0
+        },
+        "policy_recall": {
+          "hits": 4,
+          "total": 4,
+          "rate": 1.0
+        },
+        "data_recall": {
+          "hits": 3,
+          "total": 3,
+          "rate": 1.0
+        },
+        "memory_recall": {
+          "hits": 1,
+          "total": 1,
+          "rate": 1.0
+        }
+      },
+      "held_out": {
+        "cases": 28,
+        "exact": {
+          "hits": 24,
+          "total": 28,
+          "rate": 0.857
+        },
+        "policy_recall": {
+          "hits": 4,
+          "total": 4,
+          "rate": 1.0
+        },
+        "data_recall": {
+          "hits": 15,
+          "total": 17,
+          "rate": 0.882
+        },
+        "memory_recall": {
+          "hits": 3,
+          "total": 3,
+          "rate": 1.0
+        }
+      },
+      "misses": [
+        {
+          "id": "SQ-23",
+          "query": "Write me a restock reminder for the ones that are nearly gone.",
+          "gold": [
+            "data"
+          ],
+          "predicted": [
+            "memory"
+          ],
+          "exact": false,
+          "fallback": false,
+          "latency_ms": 621,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-25",
+          "query": "Update the jute rug listing to say it's handmade from organic fibres and ships next day.",
+          "gold": [
+            "policy",
+            "reviews"
+          ],
+          "predicted": [
+            "policy"
+          ],
+          "exact": false,
+          "fallback": false,
+          "latency_ms": 482,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-26",
+          "query": "What should I stop restocking?",
+          "gold": [
+            "data"
+          ],
+          "predicted": [
+            "memory"
+          ],
+          "exact": false,
+          "fallback": false,
+          "latency_ms": 549,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-32",
+          "query": "Rewrite my Boho Wall Hanging description to address the size complaints.",
+          "gold": [
+            "reviews"
+          ],
+          "predicted": [
+            "policy",
+            "reviews"
+          ],
+          "exact": false,
+          "fallback": false,
+          "latency_ms": 728,
+          "few_shot": false
+        }
+      ]
+    }
+  ]
+}

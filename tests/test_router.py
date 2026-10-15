@@ -65,6 +65,13 @@ async def test_empty_list_stays_empty():
     assert decision.fallback is False
 
 
+async def test_memory_is_a_valid_answer():
+    model = FakeRouterModel({"routes": ["memory", "reviews"]})
+    decision = await classify_query(model, "Keep my replies short.", [])
+    assert decision.routes == {Route.MEMORY, Route.REVIEWS}
+    assert decision.fallback is False
+
+
 async def test_duplicate_labels_collapse():
     decision = await classify_query(FakeRouterModel({"routes": ["data", "data"]}), "Sales?", [])
     assert decision.routes == {Route.DATA}
@@ -75,10 +82,9 @@ async def test_duplicate_labels_collapse():
     [
         FakeRouterModel(error=RuntimeError("groq down")),
         FakeRouterModel({"routes": ["sales"]}),  # unknown label
-        FakeRouterModel({"routes": ["memory"]}),  # deferred route: not in the schema
         FakeRouterModel("not a schema"),  # parser handed back something else
     ],
-    ids=["exception", "unknown-label", "deferred-label", "unparseable"],
+    ids=["exception", "unknown-label", "unparseable"],
 )
 async def test_failures_fall_back_to_all_routes(model):
     decision = await classify_query(model, "How did last week go?", [])
@@ -124,11 +130,10 @@ def test_schema_labels_match_built_routes():
 
 def test_few_shot_matches_gold_labels():
     gold = {case.id: case for case in load_route_cases()}
-    assert 6 <= len(FEW_SHOT) <= 8
+    assert 6 <= len(FEW_SHOT) <= 9
     for case_id, message, routes in FEW_SHOT:
         assert message == gold[case_id].message, case_id
         assert frozenset(routes) == gold[case_id].routes, case_id
-        assert not gold[case_id].deferred, case_id
 
 
 def test_router_model_defaults(monkeypatch):

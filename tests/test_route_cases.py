@@ -39,9 +39,10 @@ def test_real_file_spot_labels():
     assert routes["SQ-16"] == {Route.MEMORY, Route.REVIEWS}
 
 
-def test_real_file_memory_cases_deferred():
-    deferred = {c.id for c in load_route_cases() if c.deferred}
-    assert deferred == {"SQ-05", "SQ-16", "SQ-22", "SQ-23", "SQ-33", "SQ-36"}
+def test_real_file_memory_cases_are_writes_and_lists_only():
+    # SQ-23/SQ-36 only apply the saved threshold, which recall supplies (w2-13b).
+    memory = {c.id for c in load_route_cases() if Route.MEMORY in c.routes}
+    assert memory == {"SQ-05", "SQ-16", "SQ-22", "SQ-33"}
 
 
 def test_joins_query_and_context(tmp_path):

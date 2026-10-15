@@ -20,7 +20,7 @@
 {"id": "SQ-20", "routes": ["policy"], "why": "Strike-through reference price with no supporting price history; pricing policy refusal."}
 {"id": "SQ-21", "routes": ["reviews"], "why": "Cancellations exist only as buyer complaints in reviews (no orders table); AE-14 forbids the sales tool and only welcomes, not requires, inventory calls."}
 {"id": "SQ-22", "routes": ["memory"], "why": "Memory update: the restock threshold for stock alerts."}
-{"id": "SQ-23", "routes": ["memory", "data"], "why": "Restock reminder from inventory/sales tool figures, using the saved restock threshold for 'nearly gone'."}
+{"id": "SQ-23", "routes": ["data"], "why": "Restock reminder from inventory/sales tool figures. Uses the saved restock threshold for 'nearly gone' but does not change it: recall puts it in every prompt (w2-14), so no memory route (w2-13b)."}
 {"id": "SQ-24", "routes": ["data"], "why": "Inventory tool timeout; say so, give no quantities."}
 {"id": "SQ-25", "routes": ["policy", "reviews"], "why": "Unsubstantiated material and delivery claims; refused, with the claims checked against reviews and listing content."}
 {"id": "SQ-26", "routes": ["data"], "why": "Sales velocity joined against stock on hand."}
@@ -33,5 +33,5 @@
 {"id": "SQ-33", "routes": ["memory"], "why": "Memory read: list the saved preferences."}
 {"id": "SQ-34", "routes": ["data"], "why": "Week-over-week comparison from the sales tool."}
 {"id": "SQ-35", "routes": ["data"], "why": "Top product by revenue this month from the sales tool."}
-{"id": "SQ-36", "routes": ["memory", "data"], "why": "Restock priority from velocity x stock, applying the saved restock threshold."}
+{"id": "SQ-36", "routes": ["data"], "why": "Restock priority from velocity x stock. Applies the saved restock threshold without changing it: recall supplies it (w2-14), so no memory route (w2-13b)."}
 {"id": "SQ-37", "routes": ["data"], "why": "Sales tool timeout; fall back to the last confirmed day."}

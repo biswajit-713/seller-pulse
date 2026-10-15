@@ -88,7 +88,8 @@ uv run python -m seller_pulse.evals.route_eval [--model X] [--runs N] [--pace S]
 ```
 
 Each turn, a small classifier (`router.classify_query`, model `ROUTER_MODEL`) picks which system
-prompt modules (`data` / `reviews` / `policy`) and tools to load. This eval scores that
+prompt modules (`data` / `reviews` / `policy`) and tools to load; `memory` loads only the
+preference tools. This eval scores that
 classifier against the gold route sets in `data/synthetic_queries/route_cases.jsonl`. It makes
 live Groq calls and needs `GROQ_API_KEY`. Calls are spaced out (`--pace`) to stay under Groq's
 per-minute token limit. Run it whenever the classifier prompt, its few-shot examples, or
@@ -98,10 +99,9 @@ per-minute token limit. Run it whenever the classifier prompt, its few-shot exam
 - **`policy` recall is 100%.** Missing `policy` on a request that breaks a rule is the
   expensive mistake.
 - **`data` recall is at least 95%.**
+- **`memory` recall is 100%.** A miss means a preference the seller stated is never saved.
 - **No fallbacks.** On an error or timeout the classifier routes to everything, which would
   hide a classifier problem.
-
-Cases labelled `memory` are reported separately and don't count toward the gate.
 
 Exit codes: `0` gate met, `1` gate missed, `2` could not run.
 

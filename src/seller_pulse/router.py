@@ -34,20 +34,19 @@ class Route(StrEnum):
     DATA = "data"  # sales, inventory, figures, forecasts -> tool rules, tools bound
     REVIEWS = "reviews"  # review search/stats, listings, drafts, rewrites
     POLICY = "policy"  # anything that might touch a marketplace rule -> refusal procedure
-    MEMORY = "memory"  # saved preferences -> memory tools (w2-13); gold label only, no module yet
+    # Stating, changing or listing a preference -> memory tools (w2-13b). No prompt module: the
+    # tool descriptions carry the instructions, and recall is in every turn's prompt (w2-14).
+    MEMORY = "memory"
 
 
-# Routes that are labelled in the gold set but not built yet. Cases carrying one are skipped in
-# the classifier eval until the route lands.
-DEFERRED_ROUTES = frozenset({Route.MEMORY})
-
-# Every route that is built. The fail-open answer: a classifier error routes here.
-ALL_ROUTES = frozenset(Route) - DEFERRED_ROUTES
+# The fail-open answer: a classifier error routes here.
+ALL_ROUTES = frozenset(Route)
 
 # Tools bound per route, by tool name so the filter survives the MCP swap (w2-11). A tool no
 # route names is never bound.
 ROUTE_TOOLS: dict[Route, frozenset[str]] = {
     Route.DATA: frozenset({"get_sales_analytics", "check_inventory_status"}),
+    Route.MEMORY: frozenset({"save_preference", "list_preferences"}),
 }
 
 CLASSIFY_TIMEOUT_S = 4.0
@@ -62,7 +61,7 @@ HISTORY_CHARS = 300
 class RouteSchema(BaseModel):
     """What the classifier returns. Must list exactly `ALL_ROUTES` (a test pins it)."""
 
-    routes: list[Literal["data", "reviews", "policy"]]
+    routes: list[Literal["data", "reviews", "policy", "memory"]]
 
 
 @dataclass(frozen=True)
@@ -74,7 +73,8 @@ class RouteDecision:
 
 # (route_cases id, message, gold routes). Kept in step with `route_cases.jsonl` by a test.
 # SQ-14 and SQ-25 — the policy cases with no policy vocabulary — are deliberately left out so
-# the eval still measures them out of sample. rt-05 reports these ids separately.
+# the eval still measures them out of sample; likewise memory has one example (SQ-16, a write)
+# and SQ-05/22/33 stay held out. rt-05 reports these ids separately.
 FEW_SHOT: tuple[tuple[str, str, tuple[Route, ...]], ...] = (
     ("SQ-01", "How did my sales perform last week?", (Route.DATA,)),
     ("SQ-12", "What are buyers complaining about most?", (Route.REVIEWS,)),
@@ -92,6 +92,7 @@ FEW_SHOT: tuple[tuple[str, str, tuple[Route, ...]], ...] = (
         (Route.POLICY, Route.REVIEWS),
     ),
     ("SQ-20", "List the wool area rug as 'was $149, now $109' - it'll convert better.", (Route.POLICY,)),
+    ("SQ-16", "Keep my review replies short and warm, and never use emojis.", (Route.MEMORY, Route.REVIEWS)),
     ("SQ-31", "What are other sellers charging for similar items, and can I see their sales?", ()),
 )
 FEW_SHOT_IDS = frozenset(case_id for case_id, _, _ in FEW_SHOT)
@@ -117,6 +118,8 @@ answered with figures from the sales or inventory tools.
 rewriting listing copy.
 - policy: anything that might touch a marketplace rule — product claims, pricing and discounts, \
 titles, photos, incentives to buyers, refunds tied to reviews, compliance or policy audits.
+- memory: the seller states, changes or asks to see a lasting preference (notification cadence, \
+reply tone, restock threshold). Not for questions that merely apply one.
 
 If the request asks to change a listing, price, title, photo or claim, or offers anything to a \
 buyer, include policy. A new claim about a product also needs reviews, to check it against what \
@@ -124,6 +127,10 @@ buyers report.
 
 A shop-wide check against marketplace rules (an audit, "is anything at risk") needs all three \
 routes: stock and listing status come from the tools, claims are checked against reviews.
+
+Only pick memory when the message itself sets, changes or lists a preference. Restock \
+reminders, restock decisions and "nearly gone" or low-stock checks use the saved threshold but \
+do not change it: they are data, not memory.
 
 There is no orders table: cancellations, returns and delivery problems are known only from \
 buyer reviews, so they are reviews, not data.

@@ -1,8 +1,7 @@
 """Load `route_cases.jsonl` (rt-02): the gold route set for every query in `queries.jsonl`.
 
 Each line is `{"id": "SQ-xx", "routes": [...], "why": "..."}`. An empty `routes` list means
-core prompt only. Cases labelled with a deferred route (`memory`) load normally but report
-`deferred`, so the classifier eval can skip them. Every problem with the file — a malformed line, a missing field, an id not in
+core prompt only. Every problem with the file — a malformed line, a missing field, an id not in
 `queries.jsonl`, a duplicate id, an unknown or repeated route — raises `HarnessError`.
 """
 
@@ -12,7 +11,7 @@ from pathlib import Path
 from seller_pulse.config import DATA_DIR
 from seller_pulse.evals.cases import _read_jsonl
 from seller_pulse.evals.retrieval_eval import DEFAULT_QUERIES_PATH, HarnessError
-from seller_pulse.router import DEFERRED_ROUTES, Route
+from seller_pulse.router import Route
 
 DEFAULT_ROUTE_CASES_PATH = DATA_DIR / "synthetic_queries" / "route_cases.jsonl"
 _REQUIRED = ("id", "routes", "why")
@@ -25,11 +24,6 @@ class RouteCase:
     why: str
     query: str
     query_context: str | None
-
-    @property
-    def deferred(self) -> bool:
-        """True if the case needs a route that isn't built yet; the classifier eval skips it."""
-        return bool(self.routes & DEFERRED_ROUTES)
 
     @property
     def message(self) -> str:
