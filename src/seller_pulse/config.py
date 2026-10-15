@@ -30,6 +30,7 @@ DEFAULT_REVIEWS_PATH = DATA_DIR / "reviews.csv"
 DEFAULT_SALES_PATH = DATA_DIR / "sales.csv"
 DEFAULT_POLICY_PATH = DATA_DIR / "policy" / "seller_policy_handbook.md"
 DEFAULT_CHROMA_PATH = DATA_DIR / "chroma"
+DEFAULT_MEMORY_PATH = DATA_DIR / "memory"
 DEFAULT_RETRIEVAL_CASES_PATH = DATA_DIR / "synthetic_queries" / "retrieval_cases.jsonl"
 
 
@@ -45,6 +46,8 @@ class Settings:
     router_model: str = DEFAULT_ROUTER_MODEL
     # ROUTING=off (rt-07's revert path): no classifier call, every module and every tool.
     routing: bool = True
+    # Seller preference store (w2-12): one JSON file per seller under this directory.
+    memory_path: Path = DEFAULT_MEMORY_PATH
 
 
 def _load_routing() -> bool:
@@ -71,4 +74,5 @@ def load_settings() -> Settings:
         judge_model=os.getenv("JUDGE_MODEL") or DEFAULT_JUDGE_MODEL,
         router_model=os.getenv("ROUTER_MODEL") or DEFAULT_ROUTER_MODEL,
         routing=_load_routing(),
+        memory_path=Path(os.getenv("MEMORY_PATH") or DEFAULT_MEMORY_PATH),
     )
