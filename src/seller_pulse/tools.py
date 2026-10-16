@@ -47,7 +47,8 @@ SAVE_PREFERENCE_DESCRIPTION = (
 )
 
 PREFERENCE_KEY_DESCRIPTION = (
-    "notification_cadence: when to send alerts (e.g. 'every Friday'); "
+    "notification_cadence: when to alert and on what, as one line keeping both "
+    "(e.g. 'every Friday: best-sellers at or below the restock threshold'); "
     "reply_tone: how buyer replies should sound; "
     "restock_threshold: stock level at or below which a SKU counts as low."
 )

@@ -215,3 +215,113 @@ mechanism. That leaves exactly **one** real open/close pair per turn: the live
   transcripts in section C are the stronger evidence for "figures are tool-sourced" per the note
   already carried in `plan/STATUS.md` against `t1-07`.
 - Section C's check 6 transcript is the graceful-degradation half of guardrail §5.
+
+---
+
+# Week 2 — two-session memory verification — 2026-10-16
+
+`plan/w2-15`'s procedure, `docs/tasks.md` #17's evidence. Each session is a fresh Python process
+built with `app.build_app`'s wiring (`get_client`, `build_retriever`, `PreferenceStore`, MCP
+analytics tools over stdio + in-process memory tools, `build_classifier`) and driven through
+`chat.respond`. History is carried within a session, never across. `data/memory/` was emptied
+before session A. Model: Groq (`.env` defaults). The prompt's `TODAY` is 2026-09-27, a **Sunday**.
+
+| Step | Session | Query | Result |
+|---|---|---|---|
+| 1 | A | SQ-05 | **Partial.** `save_preference(notification_cadence, "every Friday: best-sellers at or below the restock threshold")`, confirmed back. **Fail:** it states no threshold value and no definition of "best-seller", and saves no `restock_threshold`, so "the restock threshold" in the saved value refers to nothing. |
+| 2 | A | SQ-16 | **Pass.** `save_preference(reply_tone, "short and warm, no emojis")`, confirmed. |
+| 3 | B | "Anything I should know today?" | **Fail.** Both preferences were injected (`recalled=`), but the Friday alert was not mentioned. Routes `[]`, so no tools ran. The reply listed three recent reviews and "no inventory data to flag restock needs". Cause: `prompts._PREFERENCES_RULES` surfaces the cadence only "if it is relevant to today", and `TODAY` is a Sunday. |
+| 4 | B | SQ-03 + pasted comment | **Pass, one nit.** It identifies REV-502 / SKU-1006, and the reply is three sentences with no emojis and no compensation offer. The DRAFT label is the second line, after a "Reply to [REV-502]…" header, not the opening line. Tone is more apologetic than warm. REV-508 (the second delivery complaint) is not mentioned. |
+| 5 | B | SQ-22 | **Fail as specified, the store behaved correctly.** `save_preference(restock_threshold, "3")`, and the reply says "changed from null → 3". The "5 → 3" diff can't appear because step 1 never stored 5 (cascade from step 1). The old → new wording rule itself held. |
+| 6 | C | SQ-33 | **Pass.** `list_preferences`, all three listed, threshold **3**. It did not offer to change or remove them (SQ-33 `expected_behavior`). |
+
+**Verdict:** persistence across restarts works. Every value written in A and B was read back in
+the next process and injected on every turn. #17's DoD ("recalled, unprompted, in session 2") is
+**not met**: step 3 fails. Steps 1 and 5 fail on SQ-05 not stating a threshold.
+
+### Session A
+```
+=== Session A — stored at start: {}
+
+--- USER: Notify me every Friday about my best-sellers running low.
+routes=['memory'] fallback=False recalled=[]
+tool save_preference args={"key": "notification_cadence", "value": "every Friday: best-sellers at or below the restock threshold"} -> {"ok": true, "data": {"key": "notification_cadence", "value": "every Friday: best-sellers at or below the restock threshold", "previous_value": null}}
+--- ASSISTANT:
+Saved preference notification_cadence = “every Friday: best-sellers at or below the restock threshold”. No previous value was set.
+
+--- USER: Keep my review replies short and warm, and never use emojis.
+routes=['memory', 'reviews'] fallback=False recalled=[('notification_cadence', 'every Friday: best-sellers at or below the restock threshold')]
+tool save_preference args={"key": "reply_tone", "value": "short and warm, no emojis"} -> {"ok": true, "data": {"key": "reply_tone", "value": "short and warm, no emojis", "previous_value": null}}
+--- ASSISTANT:
+Saved preference reply_tone = “short and warm, no emojis”. No previous value was set.
+
+=== Session A — stored at end:
+{
+  "notification_cadence": "every Friday: best-sellers at or below the restock threshold",
+  "reply_tone": "short and warm, no emojis"
+}
+```
+
+### Session B (restart)
+```
+=== Session B — stored at start: {'notification_cadence': 'every Friday: best-sellers at or below the restock threshold', 'reply_tone': 'short and warm, no emojis'}
+
+--- USER: Anything I should know today?
+routes=[] fallback=False recalled=[('notification_cadence', 'every Friday: best-sellers at or below the restock threshold'), ('reply_tone', 'short and warm, no emojis')]
+--- ASSISTANT:
+- Review REV‑560 (SKU‑1124) gave 2★, citing minor damage on arrival. Check packaging for that throw blanket.
+- Review REV‑581 (SKU‑1022) gave 1★, also citing minor damage on arrival. Review packaging for that stoneware bud vase.
+- Review REV‑609 (SKU‑1141) gave 3★, neutral feedback; no urgent action needed.
+
+I have no inventory data to flag restock needs. I can’t confirm any other metrics at this time.
+
+--- USER: Draft a reply to this 2-star review complaining about late delivery. "Nice rug but delivery took almost 3 weeks."
+routes=['reviews'] fallback=False recalled=[('notification_cadence', 'every Friday: best-sellers at or below the restock threshold'), ('reply_tone', 'short and warm, no emojis')]
+--- ASSISTANT:
+Reply to [REV-502] (SKU-1006, 2★)
+DRAFT — for your approval, not sent.
+
+We’re sorry the rug arrived later than expected. We’re looking into the shipping delay and will work to improve delivery times. Thank you for your patience.
+
+--- USER: Actually, only flag things when they drop under 3 units.
+routes=['memory'] fallback=False recalled=[('notification_cadence', 'every Friday: best-sellers at or below the restock threshold'), ('reply_tone', 'short and warm, no emojis')]
+tool save_preference args={"key": "restock_threshold", "value": "3"} -> {"ok": true, "data": {"key": "restock_threshold", "value": "3", "previous_value": null}}
+--- ASSISTANT:
+Preference updated: restock_threshold changed from null → 3.
+
+=== Session B — stored at end:
+{
+  "notification_cadence": "every Friday: best-sellers at or below the restock threshold",
+  "reply_tone": "short and warm, no emojis",
+  "restock_threshold": "3"
+}
+```
+
+### Session C (restart)
+```
+=== Session C — stored at start: {'notification_cadence': 'every Friday: best-sellers at or below the restock threshold', 'reply_tone': 'short and warm, no emojis', 'restock_threshold': '3'}
+
+--- USER: What preferences do you have saved for me?
+routes=['memory'] fallback=False recalled=[('notification_cadence', ...), ('reply_tone', ...), ('restock_threshold', '3')]
+tool list_preferences args={} -> {"ok": true, "data": {"preferences": {"notification_cadence": {"value": "every Friday: best-sellers at or below the restock threshold", "updated_at": "2026-10-16T06:18:44+00:00"}, "reply_tone": {"value": "short and warm, no emojis", "updated_at": "2026-10-16T06:18:48+00:00"}, "restock_threshold": {"value": "3", "updated_at": "2026-10-16T06:19:42+00:00"}}}}
+--- ASSISTANT:
+Notification cadence: every Friday — best‑sellers at or below the restock threshold.
+Reply tone: short and warm, no emojis.
+Restock threshold: 3 units.
+```
+
+### Follow-ups (not fixed here — verification-only task)
+
+1. **SQ-05 must state and save a threshold.** The `save_preference` description says to confirm
+   "any threshold you chose", but nothing makes the model choose one. Fix: have SQ-05 also save
+   `restock_threshold` (5 per `docs/memory.md`) and state it, through the save tool's
+   description or a `memory` prompt module. This also unblocks step 5's "5 → 3".
+2. **Unprompted recall depends on the weekday.** With `TODAY` fixed to a Sunday, the "relevant to
+   today" gate never fires for a Friday cadence. Either relax the rule to "a status/overview
+   question mentions any active cadence" or re-run step 3 with `TODAY` on a Friday. That's a
+   product call: SQ-05's own note says "on a Friday".
+3. **The DRAFT label should be the first line.** A header line now precedes it.
+4. **SQ-33 doesn't offer to change or remove.** Minor prompt gap.
+5. Process exit printed `libc++abi: … recursive_mutex lock failed` after session A's output was
+   complete (native teardown, likely Chroma/ONNX). Harmless here; worth watching if the app ever
+   shuts down mid-write.

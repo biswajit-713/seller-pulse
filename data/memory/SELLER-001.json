@@ -1,0 +1,17 @@
+{
+  "notification_cadence": {
+    "value": "every Friday: best-sellers at or below the restock threshold",
+    "updated_at": "2026-10-16T06:18:44+00:00",
+    "previous_value": null
+  },
+  "reply_tone": {
+    "value": "short and warm, no emojis",
+    "updated_at": "2026-10-16T06:18:48+00:00",
+    "previous_value": null
+  },
+  "restock_threshold": {
+    "value": "3",
+    "updated_at": "2026-10-16T06:19:42+00:00",
+    "previous_value": null
+  }
+}
