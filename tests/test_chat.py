@@ -72,6 +72,7 @@ async def _respond(
         retriever=FakeRetriever(),
         tools=TOOLS,
         classify=classify,
+        store=None,
     )
 
 

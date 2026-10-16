@@ -29,7 +29,13 @@ def build_app(settings: Settings | None = None) -> gr.Blocks:
 
     async def handle(message: str, history: list[dict[str, Any]]) -> str:
         result = await respond(
-            message, history, client=client, retriever=retriever, tools=tools, classify=classify
+            message,
+            history,
+            client=client,
+            retriever=retriever,
+            tools=tools,
+            classify=classify,
+            store=store,
         )
         return result.text
 

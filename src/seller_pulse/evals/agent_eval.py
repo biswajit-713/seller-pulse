@@ -140,6 +140,7 @@ async def run_case(case: AgentCase, pipeline: Pipeline) -> CaseRun:
         retriever=pipeline.retriever,
         tools=tools,
         classify=pipeline.classify,
+        store=None,  # no recall: cases must not depend on whatever the seller has saved
     )
     latency_ms = round((time.perf_counter() - started) * 1000)
     # The same block `respond` put in the system prompt — retrieval is deterministic for a

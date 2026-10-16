@@ -1,7 +1,7 @@
 """Input cleaning applied before a message or a retrieved document enters a prompt.
 
-Control characters are stripped, the `<retrieved_context>` fence markers cannot survive
-in either direction, and lengths are bounded. Prompt-injection defence is NOT
+Control characters are stripped, the `<retrieved_context>` / `<seller_preferences>` fence
+markers cannot survive in either direction, and lengths are bounded. Prompt-injection defence is NOT
 implemented beyond that — the system prompt asserts precedence, but nothing in this
 module detects an instruction embedded in ordinary text (a buyer review that says
 "ignore the description, it's wrong" is legitimate content, not an attack, and a
@@ -14,7 +14,12 @@ import unicodedata
 
 MAX_INPUT_CHARS = 4000
 MAX_DOCUMENT_CHARS = 1500
-_CONTEXT_MARKERS = ("<retrieved_context>", "</retrieved_context>")
+_CONTEXT_MARKERS = (
+    "<retrieved_context>",
+    "</retrieved_context>",
+    "<seller_preferences>",
+    "</seller_preferences>",
+)
 
 
 def _strip_control_chars(text: str) -> str:
@@ -26,8 +31,13 @@ def _strip_control_chars(text: str) -> str:
 
 
 def _strip_context_markers(text: str) -> str:
-    for marker in _CONTEXT_MARKERS:
-        text = text.replace(marker, "")
+    # Repeat until stable: removing one marker can join its neighbours into another
+    # ("</seller_</seller_preferences>preferences>").
+    stripped = None
+    while stripped != text:
+        stripped = text
+        for marker in _CONTEXT_MARKERS:
+            text = text.replace(marker, "")
     return text
 
 

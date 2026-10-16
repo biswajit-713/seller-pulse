@@ -8,14 +8,15 @@ max(classifier, retrieval) rather than their sum.
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from langchain_core.tools import BaseTool
 
 from seller_pulse.agent import ToolCallRecord, run_agent
 from seller_pulse.llm.base import LLMClient, Message
-from seller_pulse.prompts import build_system_prompt
+from seller_pulse.memory import Preference, PreferenceStore
+from seller_pulse.prompts import build_system_prompt, render_preferences
 from seller_pulse.rag.context import render_context
 from seller_pulse.rag.retrieval import Retriever
 from seller_pulse.router import Route, RouteDecision, tools_for
@@ -33,9 +34,10 @@ Classifier = Callable[[str, list[Message]], Awaitable[RouteDecision]]
 @dataclass(frozen=True)
 class ChatResult:
     text: str
-    trace: list[ToolCallRecord]  # w2-14 adds recalled preferences
+    trace: list[ToolCallRecord]
     routes: frozenset[Route] = frozenset()
     route_fallback: bool = False  # the classifier failed open to all routes
+    preferences: list[Preference] = field(default_factory=list)  # injected into this turn's prompt
 
 
 def to_messages(history: list[dict[str, Any]] | None) -> list[Message]:
@@ -76,7 +78,10 @@ async def respond(
     retriever: Retriever,
     tools: list[BaseTool],
     classify: Classifier,
+    store: PreferenceStore | None,
 ) -> ChatResult:
+    """One chat turn. `store` is the seller's saved preferences, re-read every turn so a value
+    saved mid-session applies on the next one; `None` runs with no recall (the agent eval)."""
     clean = sanitize(message)
     if not clean:
         return ChatResult(text=EMPTY_INPUT_REPLY, trace=[])
@@ -95,7 +100,10 @@ async def respond(
     )
 
     messages: list[Message] = [*previous, {"role": "user", "content": clean}]
+    preferences = list(store.get_all().values()) if store else []
     system = f"{build_system_prompt(decision.routes)}\n\n{render_context(retrieved)}"
+    if recalled := render_preferences(preferences):
+        system += f"\n\n{recalled}"
     # Tool results go back to the model unsanitised until Week 3's guardrails.
     result = await run_agent(client.chat_model, system=system, messages=messages, tools=routed_tools)
     for record in result.tool_calls:
@@ -105,4 +113,5 @@ async def respond(
         trace=result.tool_calls,
         routes=decision.routes,
         route_fallback=decision.fallback,
+        preferences=preferences,
     )
