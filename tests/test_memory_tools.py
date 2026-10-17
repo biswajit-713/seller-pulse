@@ -107,5 +107,7 @@ def test_build_app_merges_memory_tools(tmp_path, monkeypatch):
         seller_id=SELLER,
         memory_path=tmp_path,
     )
-    assert isinstance(app.build_app(settings), gr.Blocks)
+    demo = app.build_app(settings)
+    assert isinstance(demo, gr.Blocks)
     assert isinstance(seen["store"], PreferenceStore)
+    assert any(fn.api_name == "chat" for fn in demo.fns.values())  # the Gradio API surface

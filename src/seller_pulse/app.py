@@ -14,6 +14,7 @@ from seller_pulse.memory import PreferenceStore
 from seller_pulse.rag.retrieval import build_retriever
 from seller_pulse.router import build_classifier
 from seller_pulse.tools import build_memory_tools
+from seller_pulse.trace_view import render_trace
 
 DESCRIPTION = "Ask a question in plain English about your seller data."
 
@@ -27,7 +28,7 @@ def build_app(settings: Settings | None = None) -> gr.Blocks:
     tools = asyncio.run(load_mcp_tools(settings)) + build_memory_tools(store)
     classify = build_classifier(settings)
 
-    async def handle(message: str, history: list[dict[str, Any]]) -> str:
+    async def handle(message: str, history: list[dict[str, Any]]) -> tuple[str, str]:
         result = await respond(
             message,
             history,
@@ -37,16 +38,23 @@ def build_app(settings: Settings | None = None) -> gr.Blocks:
             classify=classify,
             store=store,
         )
-        return result.text
+        return result.text, render_trace(result)
 
-    # Gradio 6 passes history as openai-style {"role", "content"} dicts; there is
-    # no legacy tuple format to opt out of.
-    return gr.ChatInterface(
-        fn=handle,
-        api_name="chat",
-        title="Seller Pulse",
-        description=DESCRIPTION,
-    )
+    # The trace panel is filled through `additional_outputs`, so it is created unrendered and
+    # placed below the chat. Gradio 6 passes history as openai-style {"role", "content"} dicts;
+    # there is no legacy tuple format to opt out of.
+    trace = gr.Markdown(render=False)
+    with gr.Blocks(title="Seller Pulse") as demo:
+        gr.ChatInterface(
+            fn=handle,
+            api_name="chat",
+            title="Seller Pulse",
+            description=DESCRIPTION,
+            additional_outputs=[trace],
+        )
+        with gr.Accordion("Agent trace", open=False):
+            trace.render()
+    return demo
 
 
 def launch() -> None:
