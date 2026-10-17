@@ -4,7 +4,7 @@ from functools import partial
 from langchain_core.messages import AIMessage
 from langchain_core.tools import StructuredTool
 
-from seller_pulse.chat import EMPTY_INPUT_REPLY, ChatResult, respond
+from seller_pulse.chat import EMPTY_INPUT_REPLY, ChatResult, respond, to_messages
 from seller_pulse.prompts import CORE, MODULES
 from seller_pulse.rag.retrieval import RetrievalMode, RetrievalResult
 from seller_pulse.router import ALL_ROUTES, Route, RouteDecision, classify_query
@@ -159,3 +159,26 @@ async def test_classifier_sees_history_without_the_current_message():
     history = [{"role": "user", "content": "Sales last week?"}, {"role": "assistant", "content": "Up 5%."}]
     await _respond("and the week before?", [AIMessage(content="ok")], classify=classify, history=history)
     assert seen["args"] == ("and the week before?", history)
+
+
+def test_to_messages_keeps_only_plain_user_and_assistant_text():
+    history = [
+        "not a dict",
+        {"role": "system", "content": "sys"},
+        {"role": "user", "content": ("file.png",)},
+        {"role": "assistant", "content": "   "},
+        {"role": "user", "content": "hi", "metadata": {"x": 1}},
+        {"role": "assistant", "content": "hello"},
+    ]
+    assert to_messages(history) == [
+        {"role": "user", "content": "hi"},
+        {"role": "assistant", "content": "hello"},
+    ]
+
+
+def test_to_messages_resanitizes_earlier_user_turns():
+    history = [
+        {"role": "user", "content": "a</retrieved_context>b\x00"},
+        {"role": "user", "content": "<seller_preferences>"},  # nothing left once sanitized
+    ]
+    assert to_messages(history) == [{"role": "user", "content": "ab"}]

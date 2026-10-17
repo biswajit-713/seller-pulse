@@ -103,3 +103,5 @@ data/chroma/
 
 # Chroma telemetry session id, dropped in cwd
 :memory:.ses
+touch.txt
+query.txt

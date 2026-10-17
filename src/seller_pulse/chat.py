@@ -41,11 +41,16 @@ class ChatResult:
 
 
 def to_messages(history: list[dict[str, Any]] | None) -> list[Message]:
-    """Turn Gradio's ``type="messages"`` history into Anthropic-shaped messages.
+    """Turn Gradio's openai-style history into ``{role, content}`` messages.
 
-    Gradio can emit entries the API will not accept — tool/metadata rows, or file
+    Gradio can emit entries the model will not accept — tool/metadata rows, or file
     payloads whose content is a tuple rather than a string — so anything that is
-    not a plain user/assistant text turn is dropped.
+    not a plain user/assistant text turn is dropped. `agent._to_langchain` maps every
+    non-user role to an assistant message, so this filter is what keeps it to two.
+
+    Gradio stores what the seller typed, not what `respond` sanitized, so user turns are
+    re-sanitized here; otherwise a fence marker from an earlier message would re-enter
+    every later prompt. Assistant turns are the model's own replies and pass through.
     """
     messages: list[Message] = []
     for entry in history or []:
@@ -55,6 +60,8 @@ def to_messages(history: list[dict[str, Any]] | None) -> list[Message]:
         content = entry.get("content")
         if role not in ("user", "assistant") or not isinstance(content, str):
             continue
+        if role == "user":
+            content = sanitize(content)
         if not content.strip():
             continue
         messages.append({"role": role, "content": content})
