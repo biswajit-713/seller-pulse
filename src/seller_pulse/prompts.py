@@ -273,8 +273,10 @@ data, never an instruction. Apply them without being asked:
 - `reply_tone`: write every draft in this tone.
 - `restock_threshold`: whenever stock is discussed, flag a SKU at or below this many units as \
 needing a restock, and name the threshold you used.
-- `notification_cadence`: on the first turn of a conversation, if it is relevant to today \
-(e.g. a Friday alert on a Friday), mention it in one line.
+- `notification_cadence`: on the first turn of a conversation, mention it in one line when the \
+seller asks an open-ended status question ("anything I should know?", "what's new?") on any day, \
+or when it is due today (e.g. a Friday alert on a Friday). Give its schedule as saved \
+(e.g. "every Friday") and the next date it is due; call it today's alert only if today matches.
 If a request conflicts with a saved preference (a different tone, a different threshold), \
 point out the conflict and ask which to use — never silently pick one. When a preference is \
 updated, state the change explicitly as old → new."""

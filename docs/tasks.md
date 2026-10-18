@@ -1,18 +1,20 @@
 # SellerPulse: 4-Week Task Plan
 *Core path: 34 one-hour tasks; this is the safe, required build every team should be able to finish. Stretch Goals (bottom) are optional add-ons for teams with extra time.*
 
-## Current state (as of 2026-10-15)
+## Current state (as of 2026-10-17)
 
-Week 1 (tasks 1–11) is done, including task 1 (`docs/team.md`). Week 2: tasks 12–16 are done —
-`docs/tools.md` spec, `sales.py:get_sales_analytics`, `inventory.py:check_inventory_status`,
-LangChain wrappers in `tools.py`, the async tool loop in `agent.py`, a system prompt that
-requires tool-sourced figures (`prompts.py`), an MCP server (`mcp_server.py`) the app loads
-its tools from over stdio (`mcp_tools.py`), and the seller preference store (`memory.py`,
-`docs/memory.md`), all covered by pytest (245 passed).
-Tasks 17–18 (memory in the agent, trace panel) and Weeks 3–4 are not started, except #27/#28
-(agent eval, pulled forward). Status is tracked per task in the tables
-below; a finer-grained, file-level breakdown lives in `plan/STATUS.md` (gitignored, local
-only).
+Week 1 (tasks 1–11) is done, including task 1 (`docs/team.md`). Week 2 (tasks 12–18) is closed
+out, with two items open: #17's unprompted recall fails and #18 still needs its screenshot.
+Built: the `docs/tools.md` spec, `sales.py:get_sales_analytics`,
+`inventory.py:check_inventory_status`, LangChain wrappers in `tools.py`, the async tool loop in
+`agent.py`, a system prompt that requires tool-sourced figures (`prompts.py`), an MCP server
+(`mcp_server.py`) the app loads its tools from over stdio (`mcp_tools.py`), the seller
+preference store and its tools (`memory.py`, `docs/memory.md`), preferences recalled into every
+turn, and an "Agent trace" panel in the UI (`trace_view.py`). pytest: 268 passed; retrieval eval
+10/10. Close-out walkthrough: `docs/verification.md`, "Week 2 close-out".
+Weeks 3–4 are not started, except #27/#28 (agent eval, pulled forward). Status is tracked per
+task in the tables below; a finer-grained, file-level breakdown lives in `plan/STATUS.md`
+(gitignored, local only).
 
 ## Week 1: Foundations, RAG & UI (11 tasks)
 **Demo Goal:** A live Gradio chat UI that answers a seller's performance question with a RAG-grounded diagnosis of a specific listing; no tools, memory, or guardrails yet, but it's clickable and shareable. Plus two written deliverables: an Amazon-style 6-pager and a PR/FAQ.
@@ -41,8 +43,8 @@ only).
 | 14 | Implement the inventory-status tool | Returns correct stock level for a known SKU and a clear error for an unknown one | Test log showing both cases | Done — `tests/test_inventory_status.py` + `tests/test_tools.py` (LangChain wrapper); MCP exposure is task 15 |
 | 15 | Set up MCP to expose both tools to the agent; test a full round trip | Agent calls both tools via MCP and uses their results in a live response | Trace/log of one query showing the response built from tool output | Done — `mcp_server.py` (FastMCP, stdio) + `mcp_tools.py:load_mcp_tools` (`langchain-mcp-adapters`); app loads both tools over MCP. Live trace 2026-10-14: "How did last week go, and how much SKU-1001 stock is left?" → both MCP tool calls logged, answer 904 units / $41,904.71 / 6 in stock. Tests: `tests/test_mcp_server.py`, `tests/test_mcp_tools.py` |
 | 16 | Design the memory schema: notification cadence, reply tone, and restock threshold preferences | Schema documented; a record can be written and read back correctly | Schema doc + log of one record written and retrieved | Done — `docs/memory.md` (schema + cross-process write/read log), `memory.py:PreferenceStore`, `tests/test_memory_store.py` |
-| 17 | Integrate memory; test preference recall (e.g., "notify me every Friday about low best-sellers") across 2 sessions | Preference stated in session 1 is correctly recalled, unprompted, in session 2 | Transcripts of both sessions showing the preference and its recall | In progress — persistence verified; unprompted recall fails on a non-Friday `TODAY` (`docs/verification.md`, Week 2 section) |
-| 18 | Wire tools and memory into the Gradio UI via an expandable "agent trace" panel | Panel lists each tool call and the recalled preferences for the response | Screenshot of the panel expanded on a real query | Not started |
+| 17 | Integrate memory; test preference recall (e.g., "notify me every Friday about low best-sellers") across 2 sessions | Preference stated in session 1 is correctly recalled, unprompted, in session 2 | Transcripts of both sessions showing the preference and its recall | In progress — DoD not met. Persistence across restarts verified twice (`docs/verification.md`, "Week 2 — two-session memory verification" and "Week 2 close-out"), and stored preferences are applied in later sessions (threshold 3 used on a stock lookup, tone used on a draft). Unprompted recall of the Friday cadence fails: the prompt surfaces it only "if relevant to today" and `TODAY` (2026-09-27) is a Sunday. Fix is a product call, listed in the verification follow-ups |
+| 18 | Wire tools and memory into the Gradio UI via an expandable "agent trace" panel | Panel lists each tool call and the recalled preferences for the response | Screenshot of the panel expanded on a real query | Code done, screenshot pending — `trace_view.py` + the "Agent trace" accordion in `app.py`; `tests/test_trace_view.py`. The panel text for four live queries is in `docs/verification.md`, "Week 2 close-out". The DoD screenshot of the expanded panel in the browser has not been taken |
 
 ## Week 3: Guardrails & Caching (7 tasks)
 **Demo Goal:** In the live UI, show the agent refuse a review-manipulation request and label a review-reply draft as pending approval, and show a visible speed-up (cache hit badge) on a repeated analytics query.

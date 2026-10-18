@@ -11,7 +11,7 @@ and §5 — respect stored preferences and never silently override them.
 |---|---|---|---|
 | `notification_cadence` | free text: when to alert, and on what | non-blank | `weekly, every Friday: best-sellers at or below the restock threshold` (SQ-05) |
 | `reply_tone` | free text: how review-reply drafts should read | non-blank | `short and warm, no emojis` (SQ-16) |
-| `restock_threshold` | whole number of units, as a string | ASCII digits only, ≥ 0; stored normalised (`"05"` → `"5"`) | `5`, later updated to `3` (SQ-05 → SQ-22) |
+| `restock_threshold` | whole number of units, as a string | ASCII digits only, ≥ 0; stored normalised (`"05"` → `"5"`) | `3`, set by SQ-22 (SQ-05 saves no threshold, so it starts unset) |
 
 Any other key is rejected (`ValueError`). There is no "blank value" preference — removing one
 is `delete(key)`.
@@ -58,7 +58,8 @@ empty directory.
 ## 4. Why `previous_value`
 
 §5 forbids overriding a preference silently. When SQ-22 changes the threshold, the agent has to
-say "5 → 3" out loud, and it can only do that if the old value is still on hand.
+say the change out loud ("unset → 3" for SQ-22, "5 → 3" for a later change), and it can only do
+that if the old value is still on hand.
 `upsert` always returns the record with `previous_value` filled in, so whatever confirms an
 update has both numbers. Only one step of history is kept; this is not an audit log.
 

@@ -13,7 +13,8 @@ cp .env.example .env
 uv run python -m seller_pulse.rag.ingest
 ```
 
-Set `GROQ_API_KEY` in `.env` — `LLM_PROVIDER` defaults to `groq`.
+Set `GROQ_API_KEY` and `SELLER_ID` in `.env` — `LLM_PROVIDER` defaults to `groq`. `SELLER_ID`
+is required (the dataset uses `SELLER-001`); every tool is bound to it.
 
 The first ingest downloads the embedding model (~80 MB compressed, ~167 MB
 unpacked) to `~/.cache/chroma` and takes 30-60s; later runs take seconds.
@@ -26,7 +27,26 @@ uv run python -m seller_pulse
 
 Opens a chat at http://localhost:7860. Type a natural-language question; the
 message is sanitized, bundled with the system prompt and the conversation so far,
-and sent to Groq (via LangChain's `ChatGroq`).
+and sent to Groq (via LangChain's `ChatGroq`). The model can call tools:
+
+- **Sales and inventory** (`get_sales_analytics`, `check_inventory_status`) are served by an MCP
+  server, `seller_pulse.mcp_server`. The app starts it itself over stdio, one subprocess per
+  tool call (~1 s each), so there is nothing extra to run. To start it on its own (for an MCP
+  client), run `uv run python -m seller_pulse.mcp_server`.
+- **Preferences** (`save_preference`, `list_preferences`) are stored in
+  `data/memory/<SELLER_ID>.json` (override with `MEMORY_PATH`). Saved preferences are read
+  into every turn, so they still apply after a restart. See [`docs/memory.md`](docs/memory.md).
+
+Open the **Agent trace** panel under the chat to see the routes, the tool calls, and the
+preferences applied for the last reply.
+
+## Tests
+
+```bash
+uv run pytest
+```
+
+Offline: no network or `GROQ_API_KEY` needed.
 
 ## Without uv
 
@@ -49,6 +69,7 @@ fresh rather than to the pinned versions.
 - **gradio** — UI
 - **langchain-groq** — Groq API client
 - **chromadb** — vector store
+- **mcp**, **langchain-mcp-adapters** — the analytics tools' MCP server and the app's client
 - **python-dotenv** — loads secrets from `.env`
 - CSV reading via the standard library `csv` module
 

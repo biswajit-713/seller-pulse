@@ -15,10 +15,12 @@ context is injected into the system prompt; a tool-calling loop (`agent.py`) ove
 analytics tools (`get_sales_analytics`, `check_inventory_status`), which the app loads from its
 own stdio MCP server (`mcp_server.py`, via `mcp_tools.py`), calling a real model through
 LangChain's `ChatGroq`; prompt routing (`router.py`: a classifier picks the system-prompt
-modules and tools per turn; `ROUTING=off` disables it); and seller-preference memory
+modules and tools per turn; `ROUTING=off` disables it); seller-preference memory
 (`memory.py`: in-process `save_preference` / `list_preferences` tools, saved preferences
-recalled into every turn's prompt). Guardrails (Week 3) are not wired up yet — the in-progress
-build sequence lives in `plan/` (`STATUS.md` + the `w2-*` files are the active thread).
+recalled into every turn's prompt); and an "Agent trace" panel under the chat
+(`trace_view.py`: routes, tool calls, preferences applied). Week 2 is closed out (`plan/w2-17`);
+guardrails (Week 3) are not wired up yet. The build sequence lives in `plan/` (`STATUS.md` +
+per-task files).
 `plan/` is gitignored, so it never shows up in `git diff` or in a
 commit — don't assume its absence from `git status` means it's untracked-and-safe-to-ignore.
 
@@ -37,6 +39,8 @@ uv sync                          # install/update deps into .venv
 cp .env.example .env             # first-time setup; set GROQ_API_KEY (LLM_PROVIDER=groq) and SELLER_ID (required); ROUTER_MODEL optional (blank → DEFAULT_ROUTER_MODEL), ROUTING=on|off (default on), MEMORY_PATH optional (blank → data/memory)
 uv run python -m seller_pulse    # run the app — Gradio chat at http://localhost:7860
 uv run pytest                    # run tests (dev group: pytest, pytest-asyncio; asyncio_mode=auto)
+uv run python -m seller_pulse.mcp_server  # analytics MCP server on stdio, standalone (the app spawns its own)
+uv run python -m seller_pulse.evals.retrieval_eval  # offline retrieval regression check, expect 10/10
 uv run python -m seller_pulse.evals.agent_eval [--case AE-NN]  # live end-to-end eval, see docs/evals.md; full run eats Groq daily quota
 ```
 
@@ -62,7 +66,10 @@ agent eval) and `mcp_server.py` (stdio; the app loads it through
 the envelope dict). Memory tools (`tools.py:build_memory_tools`) stay in-process over
 `memory.py:PreferenceStore` — one JSON file per seller under `MEMORY_PATH`, re-read every
 turn, three keys (`notification_cadence`, `reply_tone`, `restock_threshold`); see
-`docs/memory.md`. The LLM seam is `llm/base.py:LLMClient`, a `Protocol` exposing one
+`docs/memory.md`. `respond` returns a `ChatResult` (text, tool-call trace, routes, fallback
+flag, preferences applied); `app.py` (a `gr.Blocks` wrapping `ChatInterface`) shows the text
+and renders the rest with `trace_view.py:render_trace` into the "Agent trace" accordion. The
+`/chat` API therefore returns `(text, trace_markdown)`. The LLM seam is `llm/base.py:LLMClient`, a `Protocol` exposing one
 property, `chat_model` (a LangChain `BaseChatModel`, for `bind_tools`); `agent.py` owns the
 `Message` → LangChain translation. `llm/groq_client.py` builds `ChatGroq` lazily.
 `llm/factory.py:get_client` builds `GroqLLMClient` from `Settings.llm_provider`/
