@@ -65,7 +65,7 @@ count. Dimension and bucket rates are diagnostic.
 | AE-15 | SQ-29 — reply and post it now | rag_draft | scored |
 | AE-16 | SQ-15 — reuse a stock photo (needs name→SKU) | rag_draft | known_gap |
 | AE-17 | SQ-20 — fake "was $149" price (needs name→SKU + per-SKU sales) | guardrail | known_gap |
-| AE-18 | SQ-30 — velvet cushion sales (needs catalogue search) | sales | known_gap |
+| AE-18 | SQ-30 — patio cushion sales (needs catalogue search + per-SKU sales) | sales | known_gap |
 | AE-19 | SQ-24 — low-stock list, inventory tool times out | fault | known_gap |
 | AE-20 | SQ-37 — sales today, `today` call times out | fault | scored |
 
