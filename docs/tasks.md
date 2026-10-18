@@ -51,7 +51,7 @@ task in the tables below; a finer-grained, file-level breakdown lives in `plan/S
 
 | # | Task (~1 hr) | Definition of Done | Evidence of Completion | Status |
 |---|---|---|---|---|
-| 19 | Codify guardrail rules: no fabricated figures, no auto-publishing, no policy-violating recommendations | Rules written as a checklist mapped to requirements.md's guardrail section | `docs/guardrails.md` listing each rule with its requirements.md reference | Not started |
+| 19 | Codify guardrail rules: no fabricated figures, no auto-publishing, no policy-violating recommendations | Rules written as a checklist mapped to requirements.md's guardrail section | `docs/guardrails.md` listing each rule with its requirements.md reference | Done — `docs/guardrails.md` |
 | 20 | Implement guardrail checks verified against live tool output and the policy corpus | Every figure and every customer-facing draft passes through the guardrail check before reaching the user | Log entry showing an output being labeled/filtered by the guardrail layer | Not started |
 | 21 | Test guardrails against the "free gift for a 5-star review" request and a review-reply draft | Policy violation is correctly refused with an explanation and alternative; review reply is correctly labeled as a draft awaiting approval | Transcripts of both test runs | Not started |
 | 22 | Implement caching for RAG embeddings and frequent analytics queries | Repeated identical queries hit the cache instead of re-querying | Log showing a cache miss then a cache hit on the repeat | Not started |
