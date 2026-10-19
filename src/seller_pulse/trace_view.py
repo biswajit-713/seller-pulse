@@ -9,9 +9,11 @@ import json
 
 from seller_pulse.agent import ToolCallRecord
 from seller_pulse.chat import ChatResult
+from seller_pulse.guardrails import GuardrailReport
 
 NO_TOOL_CALLS = "_No tool calls_"
 NO_PREFERENCES = "_No stored preferences_"
+GUARDRAIL_PASSED = "- ✓ passed"
 
 
 def _code(text: str) -> str:
@@ -26,6 +28,22 @@ def _tool_line(record: ToolCallRecord) -> str:
         code = (record.result.get("error") or {}).get("code") or "UNKNOWN"
         outcome = f"✗ {_code(code)}"
     return f"- {_code(record.name)} {_code(args)} — {outcome}"
+
+
+def _guardrail_lines(report: GuardrailReport | None) -> list[str]:
+    # A clause cited without a refusal sets `triggered` but is no guardrail action, so it reads as passed.
+    if report is None:
+        return [GUARDRAIL_PASSED]
+    lines = []
+    if unverified := report.ungrounded_ids + report.unverified_figures:
+        lines.append("- ⚠ unverified: " + ", ".join(_code(u) for u in unverified))
+    if report.draft_pending:
+        lines.append("- ✎ draft pending your approval")
+    if report.policy_refusal:
+        lines.append(" ".join(["- ⛔ policy refusal", *(_code(c) for c in report.policy_clauses)]))
+    if report.publish_claim:
+        lines.append("- ⚠ publish claim corrected")
+    return lines or [GUARDRAIL_PASSED]
 
 
 def render_trace(result: ChatResult) -> str:
@@ -45,5 +63,8 @@ def render_trace(result: ChatResult) -> str:
             "",
             "**Preferences applied**",
             *prefs,
+            "",
+            "**Guardrail**",
+            *_guardrail_lines(result.guardrail),
         ]
     )
