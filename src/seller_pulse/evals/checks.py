@@ -6,8 +6,8 @@ every case: an ID in the answer that no source carries is fabricated (IDs can't 
 it fails outright; a number no source carries may still be derived ("9.6%", a difference), so it
 only becomes a *suspect* for the judge (ev-04) to classify.
 
-Numbers are compared as canonical tokens, not substrings: `$41,904.71`, `41904.71` and
-`41,904.71` are one token, and `904` never matches inside `9045` or `41904.71`. The system
+Numbers are compared as canonical tokens by the shared tokeniser in `guardrails` (a `%`
+derivable from two source numbers counts as sourced). The system
 prompt is deliberately *not* a source beyond the dates it states (`TODAY`, `DATA_START`,
 `DATA_END`) — otherwise a number from its example wording could launder a fabricated figure.
 
@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from seller_pulse.agent import ToolCallRecord
+from seller_pulse.guardrails import HYPHENS, NUMBER_RE, canonical, find_ungrounded, number_tokens
 from seller_pulse.prompts import DATA_END, DATA_START, TODAY
 
 
@@ -50,14 +51,6 @@ DEFAULT_DIMENSIONS = {
 }
 CHECK_DIMENSIONS = frozenset(Dimension) - {Dimension.BEHAVIOR}
 
-_ID_RE = re.compile(r"\b(?:SKU-\d{4}|REV-\d+|pol-\w+)\b", re.IGNORECASE)
-_LIST_MARKER_RE = re.compile(r"^[ \t]*\d+[.)][ \t]", re.MULTILINE)
-# Models emit U+2010/U+2011 (hyphen, non-breaking hyphen) inside dates and IDs — `2026‑09‑14`,
-# `SKU‑1001`. Unnormalised, a date splits into three numeric suspects and an ID escapes the ID
-# check entirely, so answer and sources are both folded to ASCII `-` before anything is matched.
-_HYPHENS = str.maketrans({"\u2010": "-", "\u2011": "-"})
-_NUMBER_RE = re.compile(r"\d{4}-\d{2}-\d{2}|\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?")
-
 
 @dataclass(frozen=True)
 class CheckResult:
@@ -74,30 +67,13 @@ class Groundedness:
     suspects: list[str]  # numbers in the answer with no source match — for the judge
 
 
-def _canonical(token: str) -> str:
-    """`41,904.70` → `41904.7`; `1,000.00` → `1000`. ISO dates pass through unchanged."""
-    if token.count("-") == 2:
-        return token
-    token = token.replace(",", "")
-    if "." in token:
-        token = token.rstrip("0").rstrip(".")
-    return token
-
-
-def _number_tokens(text: str) -> list[tuple[str, str]]:
-    """(surface, canonical) for each number in ``text``, skipping ID digits and list markers."""
-    text = _ID_RE.sub(" ", text)
-    text = _LIST_MARKER_RE.sub(" ", text)
-    return [(m.group(), _canonical(m.group())) for m in _NUMBER_RE.finditer(text)]
-
-
 def _is_numeric(needle: str) -> bool:
-    return _NUMBER_RE.fullmatch(needle.strip().lstrip("$")) is not None
+    return NUMBER_RE.fullmatch(needle.strip().lstrip("$")) is not None
 
 
 def _contains(answer: str, answer_numbers: set[str], needle: str) -> bool:
     if _is_numeric(needle):
-        return _canonical(needle.strip().lstrip("$")) in answer_numbers
+        return canonical(needle.strip().lstrip("$")) in answer_numbers
     return needle.lower() in answer.lower()
 
 
@@ -165,8 +141,8 @@ def _not_contains_pattern(check: dict, answer: str) -> tuple[bool, str]:
 
 
 def run_checks(checks: list[dict], answer: str, trace: list[ToolCallRecord]) -> list[CheckResult]:
-    answer = answer.translate(_HYPHENS)
-    numbers = {canonical for _, canonical in _number_tokens(answer)}
+    answer = answer.translate(HYPHENS)
+    numbers = {c for _, c in number_tokens(answer)}
     results = []
     for check in checks:
         kind, dimension = _kind_and_dimension(check)
@@ -195,16 +171,7 @@ def check_groundedness(
 ) -> Groundedness:
     sources = [json.dumps({"args": r.args, "result": r.result}) for r in trace]
     sources += [retrieved_context, query, query_context, TODAY, DATA_START, DATA_END, *allow]
-    source_text = "\n".join(sources).translate(_HYPHENS)
-    answer = answer.translate(_HYPHENS)
-
-    source_ids = {m.upper() for m in _ID_RE.findall(source_text)}
-    ungrounded_ids = list(dict.fromkeys(m for m in _ID_RE.findall(answer) if m.upper() not in source_ids))
-
-    source_numbers = {canonical for _, canonical in _number_tokens(source_text)}
-    suspects = list(
-        dict.fromkeys(surface for surface, canonical in _number_tokens(answer) if canonical not in source_numbers)
-    )
+    ungrounded_ids, suspects = find_ungrounded(answer, sources)
 
     if ungrounded_ids:
         detail = f"IDs not in any source: {ungrounded_ids}"

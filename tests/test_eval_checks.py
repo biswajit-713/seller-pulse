@@ -132,6 +132,14 @@ def test_groundedness_suspects():
     assert result.suspects == ["9.6"]
 
 
+def test_groundedness_derived_percent_is_not_a_suspect():
+    trace = ToolCallRecord(
+        name=SALES, args={"period": "last_week"}, result={"ok": True, "data": {"revenue": 4210.5, "previous": 3890}}
+    )
+    result = _groundedness("Revenue $4,210.50, up 8.2%.", trace=[trace])
+    assert result.suspects == []
+
+
 def test_unicode_hyphens_in_dates_and_ids():
     # The live AE-01 answer wrote U+2011 inside its dates: "2026‑09‑14 to 2026‑09‑20".
     answer = "Last week (2026\u201109\u201114 to 2026\u201009\u201120) on SKU\u20111036; also SKU\u20114242."
