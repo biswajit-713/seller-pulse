@@ -5,6 +5,7 @@ from langchain_core.messages import AIMessage
 from langchain_core.tools import StructuredTool
 
 from seller_pulse.chat import EMPTY_INPUT_REPLY, ChatResult, respond, to_messages
+from seller_pulse.guardrails import UNVERIFIED_NOTE
 from seller_pulse.prompts import CORE, MODULES
 from seller_pulse.rag.retrieval import RetrievalMode, RetrievalResult
 from seller_pulse.router import ALL_ROUTES, Route, RouteDecision, classify_query
@@ -79,6 +80,31 @@ async def _respond(
 async def test_empty_input_skips_model():
     result = await _respond("   ", [])
     assert result == ChatResult(text=EMPTY_INPUT_REPLY, trace=[])
+    assert result.guardrail is None
+
+
+# --- guardrail (gr-04)
+
+
+async def test_unsourced_figure_gets_caution_line_and_log(caplog):
+    answer = "You have 42 units of SKU-1001."
+    with caplog.at_level(logging.INFO, logger="seller_pulse.chat"):
+        result = await _respond("How many SKU-1001?", [_call("SKU-1001", "c1"), AIMessage(content=answer)])
+    report = result.guardrail
+    assert report is not None and report.triggered
+    assert report.unverified_figures == ["42"] and report.ungrounded_ids == []
+    assert result.text.startswith(answer)
+    assert result.text.endswith(UNVERIFIED_NOTE.format(items="42"))
+    assert "guardrail triggered=True figures=['42'] ids=[]" in caplog.text
+
+
+async def test_grounded_answer_passes_unchanged(caplog):
+    answer = "SKU-1001 has 6 in stock."
+    with caplog.at_level(logging.INFO, logger="seller_pulse.chat"):
+        result = await _respond("How many SKU-1001?", [_call("SKU-1001", "c1"), AIMessage(content=answer)])
+    assert result.text == answer
+    assert result.guardrail is not None and result.guardrail.triggered is False
+    assert "guardrail triggered=False" in caplog.text
 
 
 async def test_returns_text_and_trace(caplog):

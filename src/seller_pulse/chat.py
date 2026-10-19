@@ -1,4 +1,5 @@
-"""The one place the request pipeline is sequenced: sanitize, route + retrieve, run the tool loop.
+"""The one place the request pipeline is sequenced: sanitize, route + retrieve, run the tool loop
+→ guardrail check.
 
 Routing (`plan/rt-06-chat-wiring.md`) picks the prompt modules and the tools bound; retrieval
 is unconditional and runs concurrently with the classifier, so routing costs about
@@ -14,6 +15,7 @@ from typing import Any
 from langchain_core.tools import BaseTool
 
 from seller_pulse.agent import ToolCallRecord, run_agent
+from seller_pulse.guardrails import GuardrailReport, annotate, check_output
 from seller_pulse.llm.base import LLMClient, Message
 from seller_pulse.memory import Preference, PreferenceStore
 from seller_pulse.prompts import build_system_prompt, render_preferences
@@ -38,6 +40,7 @@ class ChatResult:
     routes: frozenset[Route] = frozenset()
     route_fallback: bool = False  # the classifier failed open to all routes
     preferences: list[Preference] = field(default_factory=list)  # injected into this turn's prompt
+    guardrail: GuardrailReport | None = None  # None on the empty-input path (no model call)
 
 
 def to_messages(history: list[dict[str, Any]] | None) -> list[Message]:
@@ -108,17 +111,39 @@ async def respond(
 
     messages: list[Message] = [*previous, {"role": "user", "content": clean}]
     preferences = list(store.get_all().values()) if store else []
-    system = f"{build_system_prompt(decision.routes)}\n\n{render_context(retrieved)}"
+    # Rendered once: the guardrail must check against the exact context bytes the model saw.
+    context_block = render_context(retrieved)
+    system = f"{build_system_prompt(decision.routes)}\n\n{context_block}"
     if recalled := render_preferences(preferences):
         system += f"\n\n{recalled}"
-    # Tool results go back to the model unsanitised until Week 3's guardrails.
     result = await run_agent(client.chat_model, system=system, messages=messages, tools=routed_tools)
     for record in result.tool_calls:
         _log_tool_call(record)
+
+    report = check_output(
+        result.text,
+        trace=result.tool_calls,
+        retrieved_context=context_block,
+        query=clean,
+        preferences=preferences,
+        routes=decision.routes,
+    )
+    logger.info(
+        "guardrail triggered=%s figures=%s ids=%s draft_pending=%s publish_claim=%s "
+        "policy_refusal=%s clauses=%s",
+        report.triggered,
+        report.unverified_figures,
+        report.ungrounded_ids,
+        report.draft_pending,
+        report.publish_claim,
+        report.policy_refusal,
+        report.policy_clauses,
+    )
     return ChatResult(
-        text=result.text,
+        text=annotate(result.text, report),
         trace=result.tool_calls,
         routes=decision.routes,
         route_fallback=decision.fallback,
         preferences=preferences,
+        guardrail=report,
     )

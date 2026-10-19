@@ -7,7 +7,7 @@ module detects an instruction embedded in ordinary text (a buyer review that say
 "ignore the description, it's wrong" is legitimate content, not an attack, and a
 pattern-matching detector tuned against the current 24-comment corpus would false-
 positive on exactly that). Tool results that are structured data (skus, ints, status
-enums) are still trusted and unsanitized — see task #20 for when that changes.
+enums) stay trusted and unsanitized — a deliberate decision, see `docs/guardrails.md`.
 """
 
 import unicodedata
