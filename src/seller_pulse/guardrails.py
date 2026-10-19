@@ -113,7 +113,10 @@ APOSTROPHES = str.maketrans({"’": "'"})
 PUBLISH_CLAIM_RE = re.compile(
     r"\b(?:I(?:'ve| have)|(?:has|have) been|was|were)\s+(?:posted|published|sent)\b", re.IGNORECASE
 )
-REFUSAL_RE = re.compile(r"\b(?:can't|cannot|won't|will not|not allowed|isn't allowed|decline)", re.IGNORECASE)
+# A bare leading "No" ("No.", "No, …", "No — …") refuses too; "No problem" doesn't.
+REFUSAL_RE = re.compile(
+    r"\b(?:can't|cannot|won't|will not|not allowed|isn't allowed|decline)|^no(?=\s*[.,!;:—–-]|$)", re.IGNORECASE
+)
 FIRST_SENTENCE_RE = re.compile(r"(?<=[.!?])\s|\n")
 
 UNVERIFIED_NOTE = (

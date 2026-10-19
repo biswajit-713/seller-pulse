@@ -89,6 +89,15 @@ def test_curly_apostrophe_refusal():
     assert check(answer, context=POLICY_CONTEXT, query="5-star", routes={Route.POLICY}).policy_refusal
 
 
+def test_bare_no_refusal():
+    for opener in ("No.", "No, that breaks the rule.", "No — not allowed."):
+        answer = f"{opener} The policy prohibits gifts for reviews [pol-2a]."
+        assert check(answer, context=POLICY_CONTEXT, routes={Route.POLICY}).policy_refusal, opener
+    for opener in ("No problem, here is the rule.", "Nothing in [pol-2a] covers it."):
+        answer = f"{opener} See [pol-2a]."
+        assert not check(answer, context=POLICY_CONTEXT, routes={Route.POLICY}).policy_refusal, opener
+
+
 def test_draft_pending_and_text_unchanged():
     answer = f"{DRAFT_LABEL}\n\nHi Priya, thanks for letting us know the vase arrived chipped — we're sorry."
     report = check(answer, routes={Route.REVIEWS})
