@@ -1,4 +1,9 @@
-"""Output guardrails — which ids and numbers in an answer does no source carry?
+"""Output guardrails — a post-generation check of the model's final answer (docs/guardrails.md).
+
+`check_output` reports what the answer does against this turn's sources: ids and numbers no
+source carries (G1), a draft awaiting approval or a claim that something was posted (G2), and a
+grounded policy refusal (G3). `annotate` appends caution lines for the first two; it never
+blocks or rewrites the answer.
 
 The tokeniser here is shared with the agent eval (`evals/checks.py`), so the runtime check and
 the eval can never disagree about what counts as grounded.
@@ -8,9 +13,16 @@ Numbers are compared as canonical tokens, not substrings: `$41,904.71`, `41904.7
 list markers (`1. `) are not numbers.
 """
 
+import json
 import re
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable
+from dataclasses import dataclass
 from itertools import permutations
+
+from seller_pulse.agent import ToolCallRecord
+from seller_pulse.memory import Preference
+from seller_pulse.prompts import DATA_END, DATA_START, DRAFT_LABEL, TODAY
+from seller_pulse.router import Route
 
 ID_RE = re.compile(r"\b(?:SKU-\d{4}|REV-\d+|pol-\w+)\b", re.IGNORECASE)
 LIST_MARKER_RE = re.compile(r"^[ \t]*\d+[.)][ \t]", re.MULTILINE)
@@ -86,3 +98,89 @@ def find_ungrounded(answer: str, sources: Iterable[str]) -> tuple[list[str], lis
                 continue
         unsourced.append(m.group())
     return ungrounded_ids, list(dict.fromkeys(unsourced))
+
+
+def turn_sources(trace: Iterable[ToolCallRecord], retrieved_context: str, query: str) -> list[str]:
+    """What an answer may draw figures and ids from: this turn's tool calls, retrieved context,
+    the seller's own query and the dates the system prompt states — nothing else from the prompt,
+    so its example wording can't launder a fabricated figure."""
+    sources = [json.dumps({"args": r.args, "result": r.result}) for r in trace]
+    return [*sources, retrieved_context, query, TODAY, DATA_START, DATA_END]
+
+
+# Models write `I’ve` as often as `I've`; folded before the apostrophe-bearing patterns run.
+APOSTROPHES = str.maketrans({"’": "'"})
+PUBLISH_CLAIM_RE = re.compile(
+    r"\b(?:I(?:'ve| have)|(?:has|have) been|was|were)\s+(?:posted|published|sent)\b", re.IGNORECASE
+)
+REFUSAL_RE = re.compile(r"\b(?:can't|cannot|won't|will not|not allowed|isn't allowed|decline)", re.IGNORECASE)
+FIRST_SENTENCE_RE = re.compile(r"(?<=[.!?])\s|\n")
+
+UNVERIFIED_NOTE = (
+    "⚠ Guardrail: couldn't verify {items} against this turn's tool results or retrieved data — "
+    "treat as unverified."
+)
+PUBLISH_NOTE = "⚠ Guardrail: nothing has been posted or sent — drafts wait for your approval."
+
+
+@dataclass(frozen=True)
+class GuardrailReport:
+    unverified_figures: list[str]
+    ungrounded_ids: list[str]
+    draft_pending: bool
+    publish_claim: bool
+    policy_refusal: bool
+    policy_clauses: list[str]
+
+    @property
+    def triggered(self) -> bool:
+        return any(
+            (
+                self.unverified_figures,
+                self.ungrounded_ids,
+                self.draft_pending,
+                self.publish_claim,
+                self.policy_refusal,
+                self.policy_clauses,
+            )
+        )
+
+
+def check_output(
+    answer: str,
+    *,
+    trace: list[ToolCallRecord],
+    retrieved_context: str,
+    query: str,
+    preferences: list[Preference],
+    routes: Collection[Route],
+) -> GuardrailReport:
+    # A saved preference (a restock_threshold of 5) may be stated back to the seller.
+    sources = turn_sources(trace, retrieved_context, query) + [p.value for p in preferences]
+    ungrounded_ids, unverified_figures = find_ungrounded(answer, sources)
+
+    folded = answer.translate(HYPHENS).translate(APOSTROPHES)
+    retrieved = {m.lower() for m in ID_RE.findall(retrieved_context.translate(HYPHENS))}
+    cited = (m.lower() for m in ID_RE.findall(folded))
+    policy_clauses = list(dict.fromkeys(m for m in cited if m.startswith("pol-") and m in retrieved))
+    first_sentence = FIRST_SENTENCE_RE.split(folded.strip(), maxsplit=1)[0]
+    policy_refusal = Route.POLICY in routes and bool(policy_clauses) and bool(REFUSAL_RE.search(first_sentence))
+
+    return GuardrailReport(
+        unverified_figures=unverified_figures,
+        ungrounded_ids=ungrounded_ids,
+        draft_pending=DRAFT_LABEL in answer,
+        publish_claim=bool(PUBLISH_CLAIM_RE.search(folded)),
+        policy_refusal=policy_refusal,
+        policy_clauses=policy_clauses,
+    )
+
+
+def annotate(answer: str, report: GuardrailReport) -> str:
+    """``answer`` with a caution line per G1/G2 finding; draft and refusal are status only."""
+    notes = []
+    if unverified := report.ungrounded_ids + report.unverified_figures:
+        notes.append(UNVERIFIED_NOTE.format(items=", ".join(unverified)))
+    if report.publish_claim:
+        notes.append(PUBLISH_NOTE)
+    return "\n\n".join([answer, *notes]) if notes else answer

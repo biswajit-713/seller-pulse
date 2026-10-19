@@ -15,15 +15,13 @@ Malformed checks (unknown kind, `behavior` or an unknown dimension) raise `Value
 runner maps that to exit 2, a malformed case file.
 """
 
-import json
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import StrEnum
 
 from seller_pulse.agent import ToolCallRecord
-from seller_pulse.guardrails import HYPHENS, NUMBER_RE, canonical, find_ungrounded, number_tokens
-from seller_pulse.prompts import DATA_END, DATA_START, TODAY
+from seller_pulse.guardrails import HYPHENS, NUMBER_RE, canonical, find_ungrounded, number_tokens, turn_sources
 
 
 class Dimension(StrEnum):
@@ -169,8 +167,7 @@ def check_groundedness(
     query_context: str = "",
     allow: Iterable[str] = (),
 ) -> Groundedness:
-    sources = [json.dumps({"args": r.args, "result": r.result}) for r in trace]
-    sources += [retrieved_context, query, query_context, TODAY, DATA_START, DATA_END, *allow]
+    sources = [*turn_sources(trace, retrieved_context, query), query_context, *allow]
     ungrounded_ids, suspects = find_ungrounded(answer, sources)
 
     if ungrounded_ids:
