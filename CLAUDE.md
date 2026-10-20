@@ -18,8 +18,11 @@ LangChain's `ChatGroq`; prompt routing (`router.py`: a classifier picks the syst
 modules and tools per turn; `ROUTING=off` disables it); seller-preference memory
 (`memory.py`: in-process `save_preference` / `list_preferences` tools, saved preferences
 recalled into every turn's prompt); and an "Agent trace" panel under the chat
-(`trace_view.py`: routes, tool calls, preferences applied). Week 2 is closed out (`plan/w2-17`);
-guardrails (Week 3) are not wired up yet. The build sequence lives in `plan/` (`STATUS.md` +
+(`trace_view.py`: routes, tool calls, preferences applied, guardrail result); and a
+post-generation guardrail output check (`guardrails.py`: unsourced figures/ids and publish
+claims annotated, not blocked; draft-pending and policy-refusal status recorded; see
+`docs/guardrails.md`). Week 2 is closed out (`plan/w2-17`); Week 3 guardrails (#19–#21) are
+done (`plan/week-3/gr-07`), caching is not started. The build sequence lives in `plan/` (`STATUS.md` +
 per-task files).
 `plan/` is gitignored, so it never shows up in `git diff` or in a
 commit — don't assume its absence from `git status` means it's untracked-and-safe-to-ignore.
@@ -59,7 +62,11 @@ output, 4s timeout, fails open to all routes) run concurrently with `rag/retriev
 `prompts.py:render_preferences` (saved preferences, every turn, whatever the routes) →
 `agent.py:run_agent` (async model → tool calls → results loop) with only the routed tools
 (`router.py:tools_for` over `ROUTE_TOOLS`: `data` → the two analytics tools, `memory` → the
-two preference tools; `reviews`/`policy` bind none). Analytics tools wrap `sales.py` and
+two preference tools; `reviews`/`policy` bind none) → `guardrails.py:check_output` (no model
+call; checks the final answer against this turn's tool calls, the rendered context block, the
+seller's message and saved preferences) → `guardrails.py:annotate` (appends caution lines).
+The number/id tokeniser lives in `guardrails.py`; `evals/checks.py:check_groundedness` reuses
+it. Analytics tools wrap `sales.py` and
 `inventory.py` twice, sharing names and descriptions: `tools.py` (in-process; tests and the
 agent eval) and `mcp_server.py` (stdio; the app loads it through
 `mcp_tools.py:load_mcp_tools`, a fresh server subprocess per call, results parsed back into
@@ -67,7 +74,7 @@ the envelope dict). Memory tools (`tools.py:build_memory_tools`) stay in-process
 `memory.py:PreferenceStore` — one JSON file per seller under `MEMORY_PATH`, re-read every
 turn, three keys (`notification_cadence`, `reply_tone`, `restock_threshold`); see
 `docs/memory.md`. `respond` returns a `ChatResult` (text, tool-call trace, routes, fallback
-flag, preferences applied); `app.py` (a `gr.Blocks` wrapping `ChatInterface`) shows the text
+flag, preferences applied, `guardrail` report); `app.py` (a `gr.Blocks` wrapping `ChatInterface`) shows the text
 and renders the rest with `trace_view.py:render_trace` into the "Agent trace" accordion. The
 `/chat` API therefore returns `(text, trace_markdown)`. The LLM seam is `llm/base.py:LLMClient`, a `Protocol` exposing one
 property, `chat_model` (a LangChain `BaseChatModel`, for `bind_tools`); `agent.py` owns the

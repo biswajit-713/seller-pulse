@@ -1,7 +1,7 @@
 # SellerPulse: 4-Week Task Plan
 *Core path: 34 one-hour tasks; this is the safe, required build every team should be able to finish. Stretch Goals (bottom) are optional add-ons for teams with extra time.*
 
-## Current state (as of 2026-10-17)
+## Current state (as of 2026-10-20)
 
 Week 1 (tasks 1–11) is done, including task 1 (`docs/team.md`). Week 2 (tasks 12–18) is closed
 out, with two items open: #17's unprompted recall fails and #18 still needs its screenshot.
@@ -12,7 +12,11 @@ Built: the `docs/tools.md` spec, `sales.py:get_sales_analytics`,
 preference store and its tools (`memory.py`, `docs/memory.md`), preferences recalled into every
 turn, and an "Agent trace" panel in the UI (`trace_view.py`). pytest: 268 passed; retrieval eval
 10/10. Close-out walkthrough: `docs/verification.md`, "Week 2 close-out".
-Weeks 3–4 are not started, except #27/#28 (agent eval, pulled forward). Status is tracked per
+Week 3 guardrails (tasks 19–21) are done: a deterministic post-generation check
+(`guardrails.py`) annotates unsourced figures and publish claims and records draft and
+policy-refusal status, shown in the log and the trace panel (`docs/guardrails.md`). pytest:
+296 passed; retrieval eval 10/10. Caching (#22–#23) and the rest of Weeks 3–4 are not started,
+except #27/#28 (agent eval, pulled forward). Status is tracked per
 task in the tables below; a finer-grained, file-level breakdown lives in `plan/STATUS.md`
 (gitignored, local only).
 
@@ -52,8 +56,8 @@ task in the tables below; a finer-grained, file-level breakdown lives in `plan/S
 | # | Task (~1 hr) | Definition of Done | Evidence of Completion | Status |
 |---|---|---|---|---|
 | 19 | Codify guardrail rules: no fabricated figures, no auto-publishing, no policy-violating recommendations | Rules written as a checklist mapped to requirements.md's guardrail section | `docs/guardrails.md` listing each rule with its requirements.md reference | Done — `docs/guardrails.md` |
-| 20 | Implement guardrail checks verified against live tool output and the policy corpus | Every figure and every customer-facing draft passes through the guardrail check before reaching the user | Log entry showing an output being labeled/filtered by the guardrail layer | Not started |
-| 21 | Test guardrails against the "free gift for a 5-star review" request and a review-reply draft | Policy violation is correctly refused with an explanation and alternative; review reply is correctly labeled as a draft awaiting approval | Transcripts of both test runs | Not started |
+| 20 | Implement guardrail checks verified against live tool output and the policy corpus | Every figure and every customer-facing draft passes through the guardrail check before reaching the user | Log entry showing an output being labeled/filtered by the guardrail layer | Done — `guardrails.py:check_output` + `annotate` run in `chat.respond` after the tool loop on every answer (unsourced figures/ids and publish claims annotated, not blocked; `draft_pending`/`policy_refusal` recorded); one `guardrail …` log line per turn and a Guardrail section in the Agent trace panel. Log lines in `docs/guardrails.md` §5; `tests/test_guardrails.py` |
+| 21 | Test guardrails against the "free gift for a 5-star review" request and a review-reply draft | Policy violation is correctly refused with an explanation and alternative; review reply is correctly labeled as a draft awaiting approval | Transcripts of both test runs | Done — live app transcripts 2026-10-20 in `docs/guardrails.md` §5 "Live app runs": SQ-06 refused with pol-2a/pol-2b, tier and honest-feedback alternative (`policy_refusal=True`); SQ-03 draft labelled (`draft_pending=True`). Open: AE-08 flaky after the `_POLICY` step-5 change (1 fail in 3 re-runs, gave the honest-feedback alternative instead of refund + draft); AE-09 occasionally misses REV-502/508 (known t1-12 surfacing issue) |
 | 22 | Implement caching for RAG embeddings and frequent analytics queries | Repeated identical queries hit the cache instead of re-querying | Log showing a cache miss then a cache hit on the repeat | Not started |
 | 23 | Measure cache hit rate and latency improvement | Latency compared for cached vs. uncached calls with documented improvement | Before/after latency numbers committed to the repo | Not started |
 | 24 | Run all 6 sample queries from requirements.md end-to-end; fix bugs | All 6 run and are compared against the expected-answers table | Filled-in expected-answers table with actual output and pass/fail per row | Not started |
