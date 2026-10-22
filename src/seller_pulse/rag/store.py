@@ -14,6 +14,8 @@ time: changing `_embedding_function` means deleting `data/chroma/` and re-ingest
 Chroma 1.x refuses a query against a mismatched embedding config.
 """
 
+import logging
+from collections.abc import Callable
 from pathlib import Path
 
 import chromadb
@@ -22,7 +24,10 @@ from chromadb.api.models.Collection import Collection
 from chromadb.config import Settings as ChromaSettings
 from chromadb.utils.embedding_functions import DefaultEmbeddingFunction
 
+from seller_pulse.cache import Cache, CacheStats
 from seller_pulse.config import DEFAULT_CHROMA_PATH
+
+logger = logging.getLogger(__name__)
 
 POLICY_COLLECTION = "policy_kb"
 REVIEW_COLLECTION = "seller_reviews"
@@ -60,3 +65,24 @@ def warm_embedder() -> None:
     itself loads lazily on first `__call__` — a 1-3s stall. Call this once at startup.
     """
     _embedding_function(["warm up"])
+
+
+def embed_query(text: str) -> list[float]:
+    """Embed one query with the collections' own function, as plain JSON-compatible floats."""
+    return [float(x) for x in _embedding_function([text])[0]]
+
+
+def cached_embedder(cache: Cache, stats: CacheStats) -> Callable[[str], list[float]]:
+    """`embed_query` behind `cache`, keyed on the exact text (no TTL: text + model fix it)."""
+
+    def embed(text: str) -> list[float]:
+        vector = cache.get(text)
+        hit = vector is not None
+        stats.record(hit)
+        if not hit:
+            vector = embed_query(text)
+            cache.set(text, vector)
+        logger.info("cache embed %s len=%d", "hit" if hit else "miss", len(text))
+        return vector
+
+    return embed

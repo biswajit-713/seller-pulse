@@ -41,14 +41,21 @@ unfiltered search.
 """
 
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
 from chromadb.api import ClientAPI
 
-from seller_pulse.rag.store import get_client, policy_collection, review_collection, warm_embedder
+from seller_pulse.cache import Cache, CacheStats
+from seller_pulse.rag.store import (
+    cached_embedder,
+    get_client,
+    policy_collection,
+    review_collection,
+    warm_embedder,
+)
 
 if TYPE_CHECKING:
     from seller_pulse.config import Settings
@@ -109,10 +116,21 @@ def _get_hits(result: Mapping[str, Any], *, citation_fn) -> list[Hit]:
     ]
 
 
+Embed = Callable[[str], list[float]]
+
+
+def _query_args(query: str, embed: Embed | None) -> dict[str, Any]:
+    """Chroma embeds `query_texts` itself; with `embed` set we supply the vector instead."""
+    if embed is None:
+        return {"query_texts": [query]}
+    return {"query_embeddings": [embed(query)]}
+
+
 class ReviewStore:
-    def __init__(self, client: ClientAPI, *, seller_id: str) -> None:
+    def __init__(self, client: ClientAPI, *, seller_id: str, embed: Embed | None = None) -> None:
         self._collection = review_collection(client)
         self._seller_id = seller_id
+        self._embed = embed
 
         total = self._collection.count()
         if total == 0:
@@ -130,7 +148,7 @@ class ReviewStore:
 
     def search(self, query: str, *, k: int = REVIEW_K, rating: int | None = None) -> list[Hit]:
         result = self._collection.query(
-            query_texts=[query],
+            **_query_args(query, self._embed),
             n_results=k,
             where=self._where(None if rating is None else {"rating": rating}),
         )
@@ -148,16 +166,13 @@ class ReviewStore:
 
 
 class PolicyStore:
-    def __init__(self, client: ClientAPI) -> None:
+    def __init__(self, client: ClientAPI, *, embed: Embed | None = None) -> None:
         self._collection = policy_collection(client)
+        self._embed = embed
 
     def search(self, query: str, *, k: int = POLICY_K) -> list[Hit]:
-        result = self._collection.query(query_texts=[query], n_results=k)
+        result = self._collection.query(**_query_args(query, self._embed), n_results=k)
         return _query_hits(result, citation_fn=_policy_citation)
-
-    def get(self, chunk_ids: Sequence[str]) -> list[Hit]:
-        result = self._collection.get(ids=list(chunk_ids))
-        return _get_hits(result, citation_fn=_policy_citation)
 
 
 _STATS_HINTS = frozenset(
@@ -233,11 +248,17 @@ class Retriever:
         )
 
 
-def build_retriever(settings: "Settings") -> Retriever:
+def build_retriever(
+    settings: "Settings",
+    *,
+    embed_cache: Cache | None = None,
+    stats: CacheStats | None = None,
+) -> Retriever:
+    embed = cached_embedder(embed_cache, stats or CacheStats()) if embed_cache else None
     client = get_client(settings.chroma_path)
     retriever = Retriever(
-        reviews=ReviewStore(client, seller_id=settings.seller_id),
-        policy=PolicyStore(client),
+        reviews=ReviewStore(client, seller_id=settings.seller_id, embed=embed),
+        policy=PolicyStore(client, embed=embed),
     )
     warm_embedder()
     return retriever
