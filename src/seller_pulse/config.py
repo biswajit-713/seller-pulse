@@ -31,6 +31,9 @@ DEFAULT_SALES_PATH = DATA_DIR / "sales.csv"
 DEFAULT_POLICY_PATH = DATA_DIR / "policy" / "seller_policy_handbook.md"
 DEFAULT_CHROMA_PATH = DATA_DIR / "chroma"
 DEFAULT_MEMORY_PATH = DATA_DIR / "memory"
+DEFAULT_CACHE_EMBED_MAX = 1024
+DEFAULT_CACHE_TOOL_MAX = 256
+DEFAULT_CACHE_TOOL_TTL_S = 300
 DEFAULT_RETRIEVAL_CASES_PATH = DATA_DIR / "synthetic_queries" / "retrieval_cases.jsonl"
 
 
@@ -48,6 +51,11 @@ class Settings:
     routing: bool = True
     # Seller preference store (w2-12): one JSON file per seller under this directory.
     memory_path: Path = DEFAULT_MEMORY_PATH
+    # CACHING=off: no embedding or tool-result caching (for before/after comparisons).
+    caching: bool = True
+    cache_embed_max: int = DEFAULT_CACHE_EMBED_MAX
+    cache_tool_max: int = DEFAULT_CACHE_TOOL_MAX
+    cache_tool_ttl_s: float = DEFAULT_CACHE_TOOL_TTL_S
 
 
 def _load_routing() -> bool:
@@ -55,6 +63,26 @@ def _load_routing() -> bool:
     if value not in ("on", "off"):
         raise ValueError(f"ROUTING must be 'on' or 'off', got {value!r}.")
     return value == "on"
+
+
+def _load_caching() -> bool:
+    value = (os.getenv("CACHING") or "on").strip().lower()
+    if value not in ("on", "off"):
+        raise ValueError(f"CACHING must be 'on' or 'off', got {value!r}.")
+    return value == "on"
+
+
+def _positive(name: str, default: float) -> float:
+    raw = (os.getenv(name) or "").strip()
+    if not raw:
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        raise ValueError(f"{name} must be a positive number, got {raw!r}.") from None
+    if not value > 0:  # also rejects nan
+        raise ValueError(f"{name} must be a positive number, got {raw!r}.")
+    return value
 
 
 def load_settings() -> Settings:
@@ -75,4 +103,8 @@ def load_settings() -> Settings:
         router_model=os.getenv("ROUTER_MODEL") or DEFAULT_ROUTER_MODEL,
         routing=_load_routing(),
         memory_path=Path(os.getenv("MEMORY_PATH") or DEFAULT_MEMORY_PATH),
+        caching=_load_caching(),
+        cache_embed_max=int(_positive("CACHE_EMBED_MAX", DEFAULT_CACHE_EMBED_MAX)),
+        cache_tool_max=int(_positive("CACHE_TOOL_MAX", DEFAULT_CACHE_TOOL_MAX)),
+        cache_tool_ttl_s=_positive("CACHE_TOOL_TTL_S", DEFAULT_CACHE_TOOL_TTL_S),
     )
