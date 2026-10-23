@@ -1,3 +1,5 @@
+import dataclasses
+
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import StructuredTool
 
@@ -59,7 +61,7 @@ async def test_one_call_then_answer():
         AIMessage(content="Done."),
     ])
     assert result.text == "Done."
-    assert result.tool_calls == [
+    assert [dataclasses.replace(r, latency_ms=0) for r in result.tool_calls] == [
         ToolCallRecord(name="echo", args={"sku": "SKU-1001"}, result=_echo("SKU-1001"))
     ]
     # The tool result reaches the model on the next step, tied to its call id.
@@ -112,3 +114,20 @@ async def test_no_tools_skips_bind_tools():
     result = await run_agent(model, system="sys", messages=HISTORY, tools=[])
     assert result.text == "Plain answer."
     assert len(model.seen) == 1
+
+
+async def test_cache_hit_flag_recorded_but_hidden_from_model():
+    def hit(sku: str) -> dict:
+        return {"ok": True, "data": {"sku": sku}, "_cache_hit": True}
+
+    tool = StructuredTool.from_function(func=hit, name="echo", description="Cached echo.")
+    model = ScriptedChatModel(
+        [_tool_reply(_call("echo", {"sku": "SKU-1001"}, "c1")), AIMessage(content="done")]
+    )
+    result = await run_agent(model, system="s", messages=[], tools=[tool])
+    record = result.tool_calls[0]
+    assert record.cached is True
+    assert record.latency_ms >= 0
+    assert "_cache_hit" not in record.result
+    tool_msg = next(m for m in model.seen[1] if isinstance(m, ToolMessage))
+    assert "_cache_hit" not in tool_msg.content

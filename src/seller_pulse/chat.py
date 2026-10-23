@@ -74,10 +74,23 @@ def to_messages(history: list[dict[str, Any]] | None) -> list[Message]:
 def _log_tool_call(record: ToolCallRecord) -> None:
     ok = record.result.get("ok")
     if ok:
-        logger.info("tool %s args=%s ok=True", record.name, record.args)
+        logger.info(
+            "tool %s args=%s ok=True ms=%d cached=%s",
+            record.name,
+            record.args,
+            record.latency_ms,
+            record.cached,
+        )
     else:
         code = (record.result.get("error") or {}).get("code")
-        logger.info("tool %s args=%s ok=False code=%s", record.name, record.args, code)
+        logger.info(
+            "tool %s args=%s ok=False code=%s ms=%d cached=%s",
+            record.name,
+            record.args,
+            code,
+            record.latency_ms,
+            record.cached,
+        )
 
 
 async def respond(

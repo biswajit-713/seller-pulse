@@ -14,12 +14,18 @@ duplicate work, never corruption. `MemoryCache.get` uses `pop` (not check-then-d
 stay safe under that interleaving.
 """
 
+import json
 import logging
 import time
 from collections import OrderedDict
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Protocol
+
+from langchain_core.tools import BaseTool, StructuredTool
+
+from seller_pulse.inventory import normalise_sku
+from seller_pulse.sales import normalise_period
 
 logger = logging.getLogger(__name__)
 
@@ -82,3 +88,45 @@ class CacheStats:
     def hit_rate(self) -> float:
         total = self.hits + self.misses
         return self.hits / total if total else 0.0
+
+
+# Read-only tools only; memory tools have side effects and are never cached.
+CACHED_TOOLS = frozenset({"get_sales_analytics", "check_inventory_status"})
+
+
+def tool_key(name: str, args: dict) -> str:
+    """Tool name + args normalised the way the tools themselves do, so equivalents share a key."""
+    normalised = dict(args)
+    if "period" in normalised:
+        normalised["period"] = normalise_period(normalised["period"])
+    if "sku" in normalised:
+        normalised["sku"] = normalise_sku(normalised["sku"])
+    return f"{name}:{json.dumps(normalised, sort_keys=True)}"
+
+
+def _cached_tool(tool: BaseTool, cache: Cache, stats: CacheStats, ttl_s: float) -> BaseTool:
+    async def call(**kwargs) -> dict:
+        key = tool_key(tool.name, kwargs)
+        envelope = cache.get(key)
+        stats.record(envelope is not None)
+        if envelope is not None:
+            logger.info("cache tool=%s hit key=%s", tool.name, key)
+            return {**envelope, "_cache_hit": True}
+        logger.info("cache tool=%s miss key=%s", tool.name, key)
+        envelope = await tool.ainvoke(kwargs)
+        if envelope.get("ok") is True:
+            cache.set(key, envelope, ttl_s)
+        return envelope
+
+    return StructuredTool.from_function(
+        coroutine=call, name=tool.name, description=tool.description, args_schema=tool.args_schema
+    )
+
+
+def cached_tools(
+    tools: list[BaseTool], cache: Cache, stats: CacheStats, *, ttl_s: float
+) -> list[BaseTool]:
+    """`tools` with the read-only analytics tools served from `cache` on repeat calls."""
+    return [
+        _cached_tool(t, cache, stats, ttl_s) if t.name in CACHED_TOOLS else t for t in tools
+    ]

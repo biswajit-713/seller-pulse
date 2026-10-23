@@ -75,12 +75,16 @@ def _error(code: str, message: str) -> dict:
     return {"ok": False, "error": {"code": code, "message": message}}
 
 
+def normalise_sku(sku: str) -> str:
+    return sku.strip().upper()
+
+
 def check_inventory_status(seller_id: str, sku: str) -> dict:
     """Return the docs/tools.md envelope. Never raises for bad input.
 
     `status` and `stock_qty` are reported verbatim — never derived from each other.
     """
-    normalised = sku.strip().upper()
+    normalised = normalise_sku(sku)
     if not _SKU_PATTERN.match(normalised):
         return _error("INVALID_SKU", f"'{sku.strip()}' is not a SKU. Expected the form SKU-1234.")
 

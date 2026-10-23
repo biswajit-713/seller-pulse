@@ -9,6 +9,7 @@ than raised — the model decides how to degrade. Every call, failed or not, is 
 """
 
 import json
+import time
 from dataclasses import dataclass
 
 from langchain_core.language_models import BaseChatModel
@@ -28,6 +29,8 @@ class ToolCallRecord:
     name: str
     args: dict
     result: dict  # the envelope, or {"ok": False, "error": {"code": "TOOL_EXCEPTION", ...}}
+    cached: bool = False
+    latency_ms: int = 0
 
 
 @dataclass(frozen=True)
@@ -80,8 +83,20 @@ async def run_agent(
 
         lc_messages.append(reply)
         for call in reply.tool_calls:
+            started = time.perf_counter()
             result = await _run_tool(tools_by_name, call["name"], call["args"])
-            records.append(ToolCallRecord(name=call["name"], args=call["args"], result=result))
+            latency_ms = round((time.perf_counter() - started) * 1000)
+            # Private flag from the cache wrapper: for the record only, never the model or guardrail.
+            cached = bool(result.pop("_cache_hit", False))
+            records.append(
+                ToolCallRecord(
+                    name=call["name"],
+                    args=call["args"],
+                    result=result,
+                    cached=cached,
+                    latency_ms=latency_ms,
+                )
+            )
             lc_messages.append(ToolMessage(json.dumps(result), tool_call_id=call["id"]))
 
     # The last reply asked for more tools, so its content is empty or a preamble
