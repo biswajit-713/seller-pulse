@@ -27,7 +27,8 @@ def _tool_line(record: ToolCallRecord) -> str:
     else:
         code = (record.result.get("error") or {}).get("code") or "UNKNOWN"
         outcome = f"✗ {_code(code)}"
-    return f"- {_code(record.name)} {_code(args)} — {outcome}"
+    cached = " (cached)" if record.cached else ""
+    return f"- {_code(record.name)} {_code(args)} — {outcome}{cached}"
 
 
 def _guardrail_lines(report: GuardrailReport | None) -> list[str]:

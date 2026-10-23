@@ -93,7 +93,7 @@ def test_build_app_merges_memory_tools(tmp_path, monkeypatch):
         return ["memory-tool"]
 
     monkeypatch.setattr(app, "get_client", lambda s: object())
-    monkeypatch.setattr(app, "build_retriever", lambda s: object())
+    monkeypatch.setattr(app, "build_retriever", lambda s, **kw: seen.setdefault("retriever_kw", kw) or object())
     monkeypatch.setattr(app, "build_classifier", lambda s: object())
     monkeypatch.setattr(app, "load_mcp_tools", fake_mcp_tools)
     monkeypatch.setattr(app, "build_memory_tools", fake_build_memory_tools)
@@ -106,8 +106,39 @@ def test_build_app_merges_memory_tools(tmp_path, monkeypatch):
         chroma_path=Path("unused"),
         seller_id=SELLER,
         memory_path=tmp_path,
+        caching=False,
     )
     demo = app.build_app(settings)
+    assert seen["retriever_kw"] == {"embed_cache": None, "stats": None}  # CACHING=off: no caches
     assert isinstance(demo, gr.Blocks)
     assert isinstance(seen["store"], PreferenceStore)
     assert any(fn.api_name == "chat" for fn in demo.fns.values())  # the Gradio API surface
+
+
+def test_build_app_caches_when_enabled(tmp_path, monkeypatch):
+    seen = {}
+
+    async def fake_mcp_tools(settings):
+        return ["mcp-tool"]
+
+    monkeypatch.setattr(app, "get_client", lambda s: object())
+    monkeypatch.setattr(app, "build_retriever", lambda s, **kw: seen.update(kw) or object())
+    monkeypatch.setattr(app, "build_classifier", lambda s: object())
+    monkeypatch.setattr(app, "load_mcp_tools", fake_mcp_tools)
+    monkeypatch.setattr(app, "build_memory_tools", lambda store: ["memory-tool"])
+    monkeypatch.setattr(
+        app, "cached_tools", lambda tools, cache, stats, *, ttl_s: seen.update(ttl=ttl_s) or tools
+    )
+
+    settings = Settings(
+        llm_provider="groq",
+        groq_api_key=None,
+        groq_model="test-model",
+        server_port=7860,
+        chroma_path=Path("unused"),
+        seller_id=SELLER,
+        memory_path=tmp_path,
+        cache_tool_ttl_s=42,
+    )
+    app.build_app(settings)
+    assert seen["embed_cache"] is not None and seen["ttl"] == 42

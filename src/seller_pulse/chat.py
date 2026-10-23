@@ -8,6 +8,7 @@ max(classifier, retrieval) rather than their sum.
 
 import asyncio
 import logging
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
@@ -105,6 +106,7 @@ async def respond(
 ) -> ChatResult:
     """One chat turn. `store` is the seller's saved preferences, re-read every turn so a value
     saved mid-session applies on the next one; `None` runs with no recall (the agent eval)."""
+    started = time.perf_counter()
     clean = sanitize(message)
     if not clean:
         return ChatResult(text=EMPTY_INPUT_REPLY, trace=[])
@@ -152,8 +154,10 @@ async def respond(
         report.policy_refusal,
         report.policy_clauses,
     )
+    final = annotate(result.text, report)
+    logger.info("turn_ms=%d", (time.perf_counter() - started) * 1000)
     return ChatResult(
-        text=annotate(result.text, report),
+        text=final,
         trace=result.tool_calls,
         routes=decision.routes,
         route_fallback=decision.fallback,

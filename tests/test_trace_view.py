@@ -15,6 +15,12 @@ UNKNOWN = ToolCallRecord(
 TONE = Preference("reply_tone", "short and warm", "2026-10-16T09:00:00+00:00", None)
 
 
+def test_cached_record_is_marked_and_uncached_is_not():
+    cached = ToolCallRecord("get_sales_analytics", {"period": "last_week"}, {"ok": True}, cached=True)
+    assert render_trace(ChatResult(text="x", trace=[cached])).count("(cached)") == 1
+    assert "(cached)" not in render_trace(ChatResult(text="x", trace=[SALES]))
+
+
 def test_two_calls_routes_and_preference():
     out = render_trace(
         ChatResult(text="", trace=[SALES, INVENTORY], routes=frozenset({Route.DATA}), preferences=[TONE])

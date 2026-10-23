@@ -107,6 +107,14 @@ async def test_grounded_answer_passes_unchanged(caplog):
     assert "guardrail triggered=False" in caplog.text
 
 
+async def test_logs_turn_ms_once_per_turn_but_not_for_empty_input(caplog):
+    with caplog.at_level(logging.INFO, logger="seller_pulse.chat"):
+        await _respond("   ", [])
+        assert "turn_ms=" not in caplog.text
+        await _respond("hi", [AIMessage(content="hello")])
+    assert caplog.text.count("turn_ms=") == 1
+
+
 async def test_returns_text_and_trace(caplog):
     with caplog.at_level(logging.INFO, logger="seller_pulse.chat"):
         result = await _respond(

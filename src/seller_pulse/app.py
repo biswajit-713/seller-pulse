@@ -6,6 +6,7 @@ from typing import Any
 
 import gradio as gr
 
+from seller_pulse.cache import CacheStats, MemoryCache, cached_tools
 from seller_pulse.chat import respond
 from seller_pulse.config import Settings, load_settings
 from seller_pulse.llm import get_client
@@ -16,16 +17,34 @@ from seller_pulse.router import build_classifier
 from seller_pulse.tools import build_memory_tools
 from seller_pulse.trace_view import render_trace
 
+logger = logging.getLogger(__name__)
+
 DESCRIPTION = "Ask a question in plain English about your seller data."
 
 
 def build_app(settings: Settings | None = None) -> gr.Blocks:
     settings = settings or load_settings()
     client = get_client(settings)  # built once, reused for every message
-    retriever = build_retriever(settings)  # one Chroma client for the process
+    logger.info("caching=%s", "on" if settings.caching else "off")
+    embed_cache = (
+        MemoryCache(max_entries=settings.cache_embed_max, name="embed")
+        if settings.caching
+        else None
+    )
+    retriever = build_retriever(  # one Chroma client for the process
+        settings, embed_cache=embed_cache, stats=CacheStats() if embed_cache else None
+    )
     store = PreferenceStore(settings.memory_path, settings.seller_id)
     # Analytics over stdio MCP (fails loudly at startup); memory tools stay in-process.
-    tools = asyncio.run(load_mcp_tools(settings)) + build_memory_tools(store)
+    analytics = asyncio.run(load_mcp_tools(settings))
+    if settings.caching:
+        analytics = cached_tools(
+            analytics,
+            MemoryCache(max_entries=settings.cache_tool_max, name="tool"),
+            CacheStats(),
+            ttl_s=settings.cache_tool_ttl_s,
+        )
+    tools = analytics + build_memory_tools(store)
     classify = build_classifier(settings)
 
     async def handle(message: str, history: list[dict[str, Any]]) -> tuple[str, str]:
