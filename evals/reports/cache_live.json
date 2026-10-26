@@ -1,0 +1,108 @@
+{
+  "rows": [
+    {
+      "question_id": "SQ-01",
+      "attempt": 1,
+      "turn_ms": 5009,
+      "tools": [
+        {
+          "name": "get_sales_analytics",
+          "latency_ms": 406,
+          "cached": false
+        }
+      ]
+    },
+    {
+      "question_id": "SQ-01",
+      "attempt": 2,
+      "turn_ms": 3557,
+      "tools": [
+        {
+          "name": "get_sales_analytics",
+          "latency_ms": 0,
+          "cached": true
+        }
+      ]
+    },
+    {
+      "question_id": "SKU-1001",
+      "attempt": 1,
+      "turn_ms": 5569,
+      "tools": [
+        {
+          "name": "check_inventory_status",
+          "latency_ms": 703,
+          "cached": false
+        }
+      ]
+    },
+    {
+      "question_id": "SKU-1001",
+      "attempt": 2,
+      "turn_ms": 3641,
+      "tools": [
+        {
+          "name": "check_inventory_status",
+          "latency_ms": 0,
+          "cached": true
+        }
+      ]
+    },
+    {
+      "question_id": "LAST-MONTH",
+      "attempt": 1,
+      "turn_ms": 5680,
+      "tools": [
+        {
+          "name": "get_sales_analytics",
+          "latency_ms": 588,
+          "cached": false
+        }
+      ]
+    },
+    {
+      "question_id": "LAST-MONTH",
+      "attempt": 2,
+      "turn_ms": 13963,
+      "tools": [
+        {
+          "name": "get_sales_analytics",
+          "latency_ms": 0,
+          "cached": true
+        }
+      ]
+    },
+    {
+      "question_id": "SQ-06",
+      "attempt": 1,
+      "turn_ms": 4029,
+      "tools": []
+    },
+    {
+      "question_id": "SQ-06",
+      "attempt": 2,
+      "turn_ms": 9702,
+      "tools": []
+    }
+  ],
+  "summary": {
+    "embed": {
+      "hits": 12,
+      "misses": 4,
+      "hit_rate": 0.75
+    },
+    "tool": {
+      "hits": 3,
+      "misses": 3,
+      "hit_rate": 0.5
+    },
+    "first": {
+      "median_turn_ms": 5289,
+      "median_tool_ms": 588
+    },
+    "repeat": {
+      "median_turn_ms": 6672,
+      "median_tool_ms": 0
+    }
+  }
+}

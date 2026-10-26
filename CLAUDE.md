@@ -22,7 +22,8 @@ recalled into every turn's prompt); and an "Agent trace" panel under the chat
 post-generation guardrail output check (`guardrails.py`: unsourced figures/ids and publish
 claims annotated, not blocked; draft-pending and policy-refusal status recorded; see
 `docs/guardrails.md`). Week 2 is closed out (`plan/w2-17`); Week 3 guardrails (#19–#21) are
-done (`plan/week-3/gr-07`), caching is not started. The build sequence lives in `plan/` (`STATUS.md` +
+done (`plan/week-3/gr-07`); caching (#22–#23) is done (`cache.py`: in-process embedding and
+analytics-tool-result caches, app only, `CACHING=off` disables; see `docs/caching.md`). The build sequence lives in `plan/` (`STATUS.md` +
 per-task files).
 `plan/` is gitignored, so it never shows up in `git diff` or in a
 commit — don't assume its absence from `git status` means it's untracked-and-safe-to-ignore.
@@ -39,11 +40,12 @@ supersedes — treat the code as the source of truth and flag the stale doc to t
 
 ```bash
 uv sync                          # install/update deps into .venv
-cp .env.example .env             # first-time setup; set GROQ_API_KEY (LLM_PROVIDER=groq) and SELLER_ID (required); ROUTER_MODEL optional (blank → DEFAULT_ROUTER_MODEL), ROUTING=on|off (default on), MEMORY_PATH optional (blank → data/memory)
+cp .env.example .env             # first-time setup; set GROQ_API_KEY (LLM_PROVIDER=groq) and SELLER_ID (required); ROUTER_MODEL optional (blank → DEFAULT_ROUTER_MODEL), ROUTING=on|off (default on), MEMORY_PATH optional (blank → data/memory), CACHING=on|off (default on) + CACHE_EMBED_MAX/CACHE_TOOL_MAX/CACHE_TOOL_TTL_S optional (blank → 1024/256/300)
 uv run python -m seller_pulse    # run the app — Gradio chat at http://localhost:7860
 uv run pytest                    # run tests (dev group: pytest, pytest-asyncio; asyncio_mode=auto)
 uv run python -m seller_pulse.mcp_server  # analytics MCP server on stdio, standalone (the app spawns its own)
 uv run python -m seller_pulse.evals.retrieval_eval  # offline retrieval regression check, expect 10/10
+uv run python -m seller_pulse.evals.cache_live [--json PATH]  # live cold-vs-warm cache measurement, see docs/caching.md
 uv run python -m seller_pulse.evals.agent_eval [--case AE-NN]  # live end-to-end eval, see docs/evals.md; full run eats Groq daily quota
 ```
 
@@ -64,7 +66,7 @@ output, 4s timeout, fails open to all routes) run concurrently with `rag/retriev
 (`router.py:tools_for` over `ROUTE_TOOLS`: `data` → the two analytics tools, `memory` → the
 two preference tools; `reviews`/`policy` bind none) → `guardrails.py:check_output` (no model
 call; checks the final answer against this turn's tool calls, the rendered context block, the
-seller's message and saved preferences) → `guardrails.py:annotate` (appends caution lines).
+seller's message and saved preferences) → `guardrails.py:annotate` (appends caution lines). With `CACHING=on` (app only), `rag/store.py:cached_embedder` memoises query embeddings in retrieval and `cache.py:cached_tools` wraps the MCP analytics tools (key = tool name + normalised args, TTL; memory tools never cached); `run_agent` records `ToolCallRecord.cached`/`latency_ms`, `respond` logs `turn_ms`, and the trace appends "(cached)".
 The number/id tokeniser lives in `guardrails.py`; `evals/checks.py:check_groundedness` reuses
 it. Analytics tools wrap `sales.py` and
 `inventory.py` twice, sharing names and descriptions: `tools.py` (in-process; tests and the
