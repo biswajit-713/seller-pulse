@@ -131,7 +131,7 @@ Earlier runs and the routing A/B are recorded in `plan/rt-00-overview.md`.
 
 ## Known gaps
 
-- **Name→SKU resolution** (`resolve_listings()`) isn't built, so AE-16/17/18 stay unscored.
+- **Name→SKU resolution** now exists as the `find_listing` tool; AE-16/17/18 have not been re-scored against it.
 - **Single sample per case.** Temperature 0 doesn't make Groq fully deterministic: AE-09/AE-13
   flipped between identical runs during the routing A/B. Re-run a failure before acting on it.
 - **Judge leniency.** One AE-14 pass was a lenient judge (the required note was missing).

@@ -45,7 +45,7 @@ ALL_ROUTES = frozenset(Route)
 # Tools bound per route, by tool name so the filter survives the MCP swap (w2-11). A tool no
 # route names is never bound.
 ROUTE_TOOLS: dict[Route, frozenset[str]] = {
-    Route.DATA: frozenset({"get_sales_analytics", "check_inventory_status"}),
+    Route.DATA: frozenset({"get_sales_analytics", "check_inventory_status", "find_listing"}),
     Route.MEMORY: frozenset({"save_preference", "list_preferences"}),
 }
 

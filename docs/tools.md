@@ -299,13 +299,24 @@ Both are the "clear error for an unknown one" that `docs/tasks.md` #14's DoD ask
 {"ok": false, "error": {"code": "INVALID_SKU", "message": "'wall hanging' is not a SKU. Expected the form SKU-1234."}}
 ```
 
+### `find_listing(name: str)`
+
+Resolves a product name to the seller's SKUs so the agent can then call `check_inventory_status`.
+Case, spaces and punctuation are ignored (`BohoWall Hanging` finds `Boho Wall Hanging - Macrame`);
+when no title contains the name, the closest titles by sliding `difflib` ratio (cutoff 0.8) are
+returned, so a typo still resolves. `data` is `{"matches": [{"sku", "title", "status"}], "truncated"}`
+with at most 3 matches; several matches are for the agent to put to the seller. Synonyms and word
+reordering do not match (that is the RAG listings option, `plan/rag-05-listings-domain.md`).
+
 ## 5. Error codes
 
 | Code | Tool | Meaning | What the agent tells the seller |
 |---|---|---|---|
 | `INVALID_PERIOD` | `get_sales_analytics` | The period couldn't be parsed, the range is reversed, or it ends in the future | Say which time range it couldn't understand and suggest a supported one (e.g. "last week", or a date range). Don't guess a window. |
 | `NO_DATA_FOR_PERIOD` | `get_sales_analytics` | The window has zero sales rows for this seller | Say plainly there's no sales data for that period and give the last date that has data. **Never report $0 or zero units.** Offer the last day/period that has data. |
-| `INVALID_SKU` | `check_inventory_status` | The input isn't in `SKU-1234` form | Ask for the SKU code. If the seller gave a product name, say a lookup by name isn't supported yet. |
+| `INVALID_SKU` | `check_inventory_status` | The input isn't in `SKU-1234` form | Ask for the SKU code. If the seller gave a product name, call `find_listing` with it. |
+| `INVALID_NAME` | `find_listing` | The name is under 4 letters/digits once spaces and punctuation are dropped | Ask for more of the product name or the SKU. |
+| `UNKNOWN_LISTING` | `find_listing` | No title in the seller's catalog matches the name, even fuzzily | Say no listing matched; ask for more of the name or the SKU. |
 | `UNKNOWN_SKU` | `check_inventory_status` | The SKU is well-formed but not in the seller's catalog | Say that SKU isn't in their catalog and ask them to check the code. Don't invent stock figures. |
 | `TIMEOUT` | either | The tool didn't return in time. Not emitted by the in-process tools today; the agent eval injects it (`evals/faults.py`, AE-19/AE-20) ahead of the MCP transport, where it can really happen | Say the check failed and give no figure for what was asked. Sales are dated per row, so a separate, successful call for the last day with data may be reported, dated. Stock has no as-of date, so there is no stock fallback. No code-specific prompt rule yet: the general `ok: false` rule covers it. |
 

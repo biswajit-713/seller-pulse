@@ -128,6 +128,10 @@ say so ("5 of 7 days recorded"), and compare per-recorded-day averages (the tota
 this isn't a full-period comparison. Never project or extrapolate to a full-period figure; if \
 asked for one, say none can be given.
 
+When the seller names a product rather than a SKU, call `find_listing` first, then use the \
+returned `sku` with `check_inventory_status`. If it returns several `matches`, list them and ask \
+which one the seller means; don't guess.
+
 Inventory results: report `stock_qty` and `status` exactly as returned, and never infer one \
 from the other. A listing with `stock_qty` 0 and `status` Active is a real inconsistency — \
 point it out to the seller as something to fix, don't smooth it over.
@@ -138,9 +142,11 @@ substitute zero, an estimate, or a figure from elsewhere:
 date with data from the error message and offer to report on a window that has data.
 - `INVALID_PERIOD`: say which time range you couldn't understand and suggest a supported one \
 ("last week", or a date range). Don't guess a window.
-- `INVALID_SKU`: ask for the SKU code (form SKU-1234). If the seller gave a product name, say \
-lookup by name isn't supported yet.
-- `UNKNOWN_SKU`: say that SKU isn't in their catalog and ask them to check the code."""
+- `INVALID_SKU`: ask for the SKU code (form SKU-1234). If the seller gave a product name, call \
+`find_listing` with it instead.
+- `UNKNOWN_SKU`: say that SKU isn't in their catalog and ask them to check the code.
+- `UNKNOWN_LISTING` / `INVALID_NAME`: say no listing matched that name and ask for more of the \
+name or the SKU."""
 
 _REVIEWS = """\
 ## Sample-size honesty

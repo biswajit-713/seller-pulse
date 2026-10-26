@@ -17,6 +17,7 @@ at first lookup. Acceptable for a static, committed 150-row file.
 import csv
 import re
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 
 from seller_pulse.config import DEFAULT_LISTINGS_PATH
 
@@ -101,5 +102,58 @@ def check_inventory_status(seller_id: str, sku: str) -> dict:
             "stock_qty": listing.stock_qty,
             "status": listing.status,
             "price_usd": listing.price_usd,
+        },
+    }
+
+
+MIN_NAME_CHARS = 4
+MAX_MATCHES = 3
+FUZZY_CUTOFF = 0.8
+
+
+def _norm_title(text: str) -> str:
+    """Lowercase, alphanumerics only: `Boho Wall Hanging - Macrame` and `BohoWall hanging` align."""
+    return re.sub(r"[^a-z0-9]", "", text.lower())
+
+
+def _fuzzy_score(query: str, title: str) -> float:
+    """Best `difflib` ratio of ``query`` against any same-length-plus-one stretch of ``title``.
+
+    A whole-title ratio punishes a partial name ("Boho Wal Hanging" vs the full title), so the
+    query is slid along the title instead.
+    """
+    width = len(query) + 1
+    starts = range(max(1, len(title) - width + 1))
+    return max(SequenceMatcher(None, query, title[i : i + width]).ratio() for i in starts)
+
+
+def find_listing(seller_id: str, name: str) -> dict:
+    """Resolve a product name to the seller's SKUs. Never raises for bad input.
+
+    A normalised substring match first (case, spaces and punctuation ignored); only when that
+    finds nothing, the closest titles by sliding `difflib` ratio, so a typo still resolves. Several
+    candidates are returned as-is for the caller to disambiguate.
+    """
+    query = _norm_title(name)
+    if len(query) < MIN_NAME_CHARS:
+        return _error("INVALID_NAME", f"'{name.strip()}' is too short to match a listing. Give more of the product name.")
+
+    # Tenant filter first: another seller's listing is indistinguishable from no match.
+    rows = [(listing, _norm_title(listing.title)) for listing in _LISTINGS.values() if listing.seller_id == seller_id]
+    matches = [listing for listing, title in rows if query in title]
+    if not matches:
+        scored = sorted(
+            ((_fuzzy_score(query, title), listing) for listing, title in rows),
+            key=lambda pair: pair[0],
+            reverse=True,
+        )
+        matches = [listing for score, listing in scored if score >= FUZZY_CUTOFF]
+    if not matches:
+        return _error("UNKNOWN_LISTING", f"No listing in your catalog matches '{name.strip()}'.")
+    return {
+        "ok": True,
+        "data": {
+            "matches": [{"sku": m.sku, "title": m.title, "status": m.status} for m in matches[:MAX_MATCHES]],
+            "truncated": len(matches) > MAX_MATCHES,
         },
     }

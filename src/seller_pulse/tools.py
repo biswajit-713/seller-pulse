@@ -20,7 +20,7 @@ from langchain_core.tools import BaseTool, StructuredTool
 from pydantic import Field
 
 from seller_pulse.config import Settings
-from seller_pulse.inventory import check_inventory_status
+from seller_pulse.inventory import check_inventory_status, find_listing
 from seller_pulse.memory import PreferenceKey, PreferenceStore
 from seller_pulse.sales import PERIOD_GRAMMAR, get_sales_analytics
 
@@ -38,6 +38,14 @@ INVENTORY_DESCRIPTION = (
 )
 
 SKU_DESCRIPTION = "The SKU code, in the form SKU-1234."
+
+FIND_LISTING_DESCRIPTION = (
+    "Find the seller's listing SKUs from a product name, as the seller wrote it (case, spacing and "
+    "small typos are fine). Use this first whenever the seller names a product instead of giving "
+    "a SKU."
+)
+
+LISTING_NAME_DESCRIPTION = "The product name or a distinctive part of it, e.g. 'Boho Wall Hanging'."
 
 SAVE_PREFERENCE_DESCRIPTION = (
     "Remember one of the seller's lasting preferences across sessions, replacing any earlier "
@@ -73,12 +81,18 @@ def build_tools(settings: Settings) -> list[BaseTool]:
     def inventory(sku: Annotated[str, Field(description=SKU_DESCRIPTION)]) -> dict:
         return check_inventory_status(seller_id, sku)
 
+    def listing(name: Annotated[str, Field(description=LISTING_NAME_DESCRIPTION)]) -> dict:
+        return find_listing(seller_id, name)
+
     return [
         StructuredTool.from_function(
             func=sales, name="get_sales_analytics", description=SALES_DESCRIPTION
         ),
         StructuredTool.from_function(
             func=inventory, name="check_inventory_status", description=INVENTORY_DESCRIPTION
+        ),
+        StructuredTool.from_function(
+            func=listing, name="find_listing", description=FIND_LISTING_DESCRIPTION
         ),
     ]
 

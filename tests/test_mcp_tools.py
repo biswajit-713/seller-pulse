@@ -71,6 +71,6 @@ async def test_wrong_tool_set_fails_loudly(monkeypatch):
 async def test_stdio_spawn_end_to_end():
     """The real subprocess: proves the interpreter, module path and SELLER_ID wiring."""
     tools = {t.name: t for t in await load_mcp_tools(SETTINGS)}
-    assert set(tools) == {"get_sales_analytics", "check_inventory_status"}
+    assert set(tools) == {"get_sales_analytics", "check_inventory_status", "find_listing"}
     result = await tools["check_inventory_status"].ainvoke({"sku": "SKU-1001"})
     assert result["data"]["stock_qty"] == 6

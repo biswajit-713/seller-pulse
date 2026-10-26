@@ -63,7 +63,7 @@ output, 4s timeout, fails open to all routes) run concurrently with `rag/retriev
 `data`/`reviews`/`policy`, in fixed order; `memory` has no module) + `rag/context.py` +
 `prompts.py:render_preferences` (saved preferences, every turn, whatever the routes) →
 `agent.py:run_agent` (async model → tool calls → results loop) with only the routed tools
-(`router.py:tools_for` over `ROUTE_TOOLS`: `data` → the two analytics tools, `memory` → the
+(`router.py:tools_for` over `ROUTE_TOOLS`: `data` → the two analytics tools plus `find_listing` (listing name → SKU), `memory` → the
 two preference tools; `reviews`/`policy` bind none) → `guardrails.py:check_output` (no model
 call; checks the final answer against this turn's tool calls, the rendered context block, the
 seller's message and saved preferences) → `guardrails.py:annotate` (appends caution lines). With `CACHING=on` (app only), `rag/store.py:cached_embedder` memoises query embeddings in retrieval and `cache.py:cached_tools` wraps the MCP analytics tools (key = tool name + normalised args, TTL; memory tools never cached); `run_agent` records `ToolCallRecord.cached`/`latency_ms`, `respond` logs `turn_ms`, and the trace appends "(cached)".
