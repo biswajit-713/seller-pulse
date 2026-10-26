@@ -3,7 +3,7 @@ from seller_pulse.chat import ChatResult
 from seller_pulse.guardrails import GuardrailReport
 from seller_pulse.memory import Preference
 from seller_pulse.router import ALL_ROUTES, Route
-from seller_pulse.trace_view import GUARDRAIL_PASSED, NO_PREFERENCES, NO_TOOL_CALLS, render_trace
+from seller_pulse.trace_view import GUARDRAIL_PASSED, NO_PREFERENCES, NO_TOOL_CALLS, render_badges, render_trace
 
 SALES = ToolCallRecord("get_sales_analytics", {"period": "last_week"}, {"ok": True, "data": {"units": 904}})
 INVENTORY = ToolCallRecord("check_inventory_status", {"sku": "SKU-1001"}, {"ok": True, "data": {}})
@@ -107,3 +107,33 @@ def test_guardrail_multiple_triggers_one_line_each():
         "- ✎ draft pending your approval",
         "- ⚠ publish claim corrected",
     ]
+
+
+def _badges(report: GuardrailReport | None, trace: list[ToolCallRecord] | None = None) -> str:
+    return render_badges(ChatResult(text="x", trace=trace or [], guardrail=report))
+
+
+def test_badges_empty_without_guardrail_report():
+    assert _badges(None) == ""
+
+
+def test_badges_passed_no_tools_has_no_cache_badge():
+    assert _badges(_report()) == "✓ **Guardrail: passed**"
+
+
+def test_badges_policy_refusal_is_blocked():
+    assert "⛔ **Guardrail: blocked**" in _badges(_report(policy_refusal=True, policy_clauses=["pol-2a"]))
+
+
+def test_badges_unverified_is_flagged():
+    assert "⚠ **Guardrail: flagged**" in _badges(_report(unverified_figures=["9.5"]))
+
+
+def test_badges_draft_pending():
+    assert "✎ **Draft: pending your approval**" in _badges(_report(draft_pending=True))
+
+
+def test_badges_cache_miss_then_hit():
+    cached = ToolCallRecord("get_sales_analytics", {"period": "last_week"}, {"ok": True}, cached=True)
+    assert "○ **Cache: miss**" in _badges(_report(), [SALES])
+    assert "⚡ **Cache: hit** (1/2 tool calls)" in _badges(_report(), [cached, SALES])

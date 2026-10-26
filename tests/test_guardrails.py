@@ -22,6 +22,10 @@ def test_derived_percent_needs_adjacent_sign():
     assert find_ungrounded("Up 8.2 points.", SOURCES) == ([], ["8.2"])
 
 
+def test_derived_percent_with_space_before_sign_is_sourced():
+    assert find_ungrounded("Up 8.2 % on last week.", SOURCES) == ([], [])
+
+
 def test_negative_change_matches_absolute_value():
     assert find_ungrounded("Revenue down 7.6% to 3,890.", SOURCES) == ([], [])
 

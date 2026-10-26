@@ -30,6 +30,7 @@ LIST_MARKER_RE = re.compile(r"^[ \t]*\d+[.)][ \t]", re.MULTILINE)
 # `SKU‑1001`. Unnormalised, a date splits into three numeric suspects and an ID escapes the ID
 # check entirely, so answer and sources are both folded to ASCII `-` before anything is matched.
 HYPHENS = str.maketrans({"‐": "-", "‑": "-"})
+PERCENT_RE = re.compile(r"\s?%")  # `9.5%` and the spaced `9.5 %` models also emit
 NUMBER_RE = re.compile(r"\d{4}-\d{2}-\d{2}|\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?")
 
 
@@ -75,7 +76,7 @@ def _derived_percents(numbers: set[str]) -> set[str]:
 def find_ungrounded(answer: str, sources: Iterable[str]) -> tuple[list[str], list[str]]:
     """(ungrounded ids, unsourced number surfaces) in ``answer``, deduped in answer order.
 
-    A number directly followed by `%` is sourced when it is the percentage change between two
+    A number followed by `%` (optionally one space between) is sourced when it is the percentage change between two
     source numbers — "up 8.2%" from 4210.5 and 3890.
     """
     source_text = "\n".join(sources).translate(HYPHENS)
@@ -91,7 +92,7 @@ def find_ungrounded(answer: str, sources: Iterable[str]) -> tuple[list[str], lis
         token = canonical(m.group())
         if token in source_numbers:
             continue
-        if answer[m.end() : m.end() + 1] == "%":
+        if PERCENT_RE.match(answer, m.end()):
             if derived is None:
                 derived = _derived_percents(source_numbers)
             if token in derived:

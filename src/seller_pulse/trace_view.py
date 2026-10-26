@@ -47,6 +47,27 @@ def _guardrail_lines(report: GuardrailReport | None) -> list[str]:
     return lines or [GUARDRAIL_PASSED]
 
 
+def render_badges(result: ChatResult) -> str:
+    """One-line status badges for the reply: guardrail outcome, draft approval, cache hit/miss."""
+    report = result.guardrail
+    if report is None:  # the empty-input path: no model call, nothing to badge
+        return ""
+    if report.policy_refusal:
+        badges = ["⛔ **Guardrail: blocked** (policy refusal)"]
+    elif report.unverified_figures or report.ungrounded_ids or report.publish_claim:
+        badges = ["⚠ **Guardrail: flagged** (see answer)"]
+    else:
+        badges = ["✓ **Guardrail: passed**"]
+    if report.draft_pending:
+        badges.append("✎ **Draft: pending your approval**")
+    if result.trace:
+        hits = sum(r.cached for r in result.trace)
+        badges.append(
+            f"⚡ **Cache: hit** ({hits}/{len(result.trace)} tool calls)" if hits else "○ **Cache: miss**"
+        )
+    return " · ".join(badges)
+
+
 def render_trace(result: ChatResult) -> str:
     routes = ", ".join(sorted(r.value for r in result.routes)) or "none"
     if result.route_fallback:

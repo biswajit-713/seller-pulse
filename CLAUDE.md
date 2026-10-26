@@ -78,7 +78,7 @@ turn, three keys (`notification_cadence`, `reply_tone`, `restock_threshold`); se
 `docs/memory.md`. `respond` returns a `ChatResult` (text, tool-call trace, routes, fallback
 flag, preferences applied, `guardrail` report); `app.py` (a `gr.Blocks` wrapping `ChatInterface`) shows the text
 and renders the rest with `trace_view.py:render_trace` into the "Agent trace" accordion. The
-`/chat` API therefore returns `(text, trace_markdown)`. The LLM seam is `llm/base.py:LLMClient`, a `Protocol` exposing one
+`trace_view.py:render_badges` fills a badge line above it (guardrail passed/flagged/blocked, draft pending, cache hit/miss), so the `/chat` API returns `(text, trace_markdown, badges_markdown)`. The LLM seam is `llm/base.py:LLMClient`, a `Protocol` exposing one
 property, `chat_model` (a LangChain `BaseChatModel`, for `bind_tools`); `agent.py` owns the
 `Message` → LangChain translation. `llm/groq_client.py` builds `ChatGroq` lazily.
 `llm/factory.py:get_client` builds `GroqLLMClient` from `Settings.llm_provider`/

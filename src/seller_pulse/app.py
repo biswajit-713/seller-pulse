@@ -15,7 +15,7 @@ from seller_pulse.memory import PreferenceStore
 from seller_pulse.rag.retrieval import build_retriever
 from seller_pulse.router import build_classifier
 from seller_pulse.tools import build_memory_tools
-from seller_pulse.trace_view import render_trace
+from seller_pulse.trace_view import render_badges, render_trace
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ def build_app(settings: Settings | None = None) -> gr.Blocks:
     tools = analytics + build_memory_tools(store)
     classify = build_classifier(settings)
 
-    async def handle(message: str, history: list[dict[str, Any]]) -> tuple[str, str]:
+    async def handle(message: str, history: list[dict[str, Any]]) -> tuple[str, str, str]:
         result = await respond(
             message,
             history,
@@ -57,11 +57,12 @@ def build_app(settings: Settings | None = None) -> gr.Blocks:
             classify=classify,
             store=store,
         )
-        return result.text, render_trace(result)
+        return result.text, render_trace(result), render_badges(result)
 
-    # The trace panel is filled through `additional_outputs`, so it is created unrendered and
-    # placed below the chat. Gradio 6 passes history as openai-style {"role", "content"} dicts;
+    # The badges and trace panel are filled through `additional_outputs`, so they are created unrendered and
+    # placed below the chat (badges first). Gradio 6 passes history as openai-style {"role", "content"} dicts;
     # there is no legacy tuple format to opt out of.
+    badges = gr.Markdown(render=False)
     trace = gr.Markdown(render=False)
     with gr.Blocks(title="Seller Pulse") as demo:
         gr.ChatInterface(
@@ -69,8 +70,9 @@ def build_app(settings: Settings | None = None) -> gr.Blocks:
             api_name="chat",
             title="Seller Pulse",
             description=DESCRIPTION,
-            additional_outputs=[trace],
+            additional_outputs=[trace, badges],
         )
+        badges.render()
         with gr.Accordion("Agent trace", open=False):
             trace.render()
     return demo
