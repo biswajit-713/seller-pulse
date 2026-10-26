@@ -157,3 +157,35 @@ def find_listing(seller_id: str, name: str) -> dict:
             "truncated": len(matches) > MAX_MATCHES,
         },
     }
+
+
+MAX_LOW_STOCK = 20
+
+
+def list_low_stock(seller_id: str, threshold: int) -> dict:
+    """The seller's listings with `stock_qty <= threshold`, lowest stock first. Never raises.
+
+    `status` and `stock_qty` are reported verbatim, as in `check_inventory_status`: an Active
+    listing at 0 units is returned as-is, for the agent to flag. `count` is every match;
+    `items` is capped at `MAX_LOW_STOCK`.
+    """
+    if threshold < 0:
+        return _error("INVALID_THRESHOLD", f"{threshold} is not a stock level. Give a whole number, 0 or more.")
+
+    # Tenant filter first: another seller's listing never appears in the result.
+    low = sorted(
+        (l for l in _LISTINGS.values() if l.seller_id == seller_id and l.stock_qty <= threshold),
+        key=lambda l: (l.stock_qty, l.sku),
+    )
+    return {
+        "ok": True,
+        "data": {
+            "threshold": threshold,
+            "count": len(low),
+            "items": [
+                {"sku": l.sku, "title": l.title, "stock_qty": l.stock_qty, "status": l.status}
+                for l in low[:MAX_LOW_STOCK]
+            ],
+            "truncated": len(low) > MAX_LOW_STOCK,
+        },
+    }

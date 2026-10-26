@@ -33,7 +33,7 @@ async def _tools():
 
 
 async def test_tool_names():
-    assert [t.name for t in await _tools()] == ["get_sales_analytics", "check_inventory_status", "find_listing"]
+    assert [t.name for t in await _tools()] == ["get_sales_analytics", "check_inventory_status", "find_listing", "list_low_stock"]
 
 
 @pytest.mark.parametrize("name, arg", [("get_sales_analytics", "period"), ("check_inventory_status", "sku")])

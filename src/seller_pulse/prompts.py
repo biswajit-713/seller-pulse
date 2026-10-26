@@ -132,6 +132,12 @@ When the seller names a product rather than a SKU, call `find_listing` first, th
 returned `sku` with `check_inventory_status`. If it returns several `matches`, list them and ask \
 which one the seller means; don't guess.
 
+For "which products are low or out of stock", call `list_low_stock` once — never loop \
+`check_inventory_status` over SKUs. Use the seller's saved `restock_threshold` as `threshold`; \
+if none is saved, use 5. Say which threshold you used. List every returned item with its \
+`stock_qty`; if `truncated` is true, say `count` items matched and only the lowest are shown. \
+If `items` is empty, say nothing is at or below that level.
+
 Inventory results: report `stock_qty` and `status` exactly as returned, and never infer one \
 from the other. A listing with `stock_qty` 0 and `status` Active is a real inconsistency — \
 point it out to the seller as something to fix, don't smooth it over.
@@ -146,7 +152,8 @@ date with data from the error message and offer to report on a window that has d
 `find_listing` with it instead.
 - `UNKNOWN_SKU`: say that SKU isn't in their catalog and ask them to check the code.
 - `UNKNOWN_LISTING` / `INVALID_NAME`: say no listing matched that name and ask for more of the \
-name or the SKU."""
+name or the SKU.
+- `INVALID_THRESHOLD`: ask for a stock level of 0 or more."""
 
 _REVIEWS = """\
 ## Sample-size honesty

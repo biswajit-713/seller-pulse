@@ -20,7 +20,7 @@ from langchain_core.tools import BaseTool, StructuredTool
 from pydantic import Field
 
 from seller_pulse.config import Settings
-from seller_pulse.inventory import check_inventory_status, find_listing
+from seller_pulse.inventory import check_inventory_status, find_listing, list_low_stock
 from seller_pulse.memory import PreferenceKey, PreferenceStore
 from seller_pulse.sales import PERIOD_GRAMMAR, get_sales_analytics
 
@@ -46,6 +46,14 @@ FIND_LISTING_DESCRIPTION = (
 )
 
 LISTING_NAME_DESCRIPTION = "The product name or a distinctive part of it, e.g. 'Boho Wall Hanging'."
+
+LOW_STOCK_DESCRIPTION = (
+    "Every listing in the seller's catalog at or below a stock level, lowest first, with SKU, "
+    "title, current quantity and status. Use this for any question about which products are low "
+    "or out of stock — never check SKUs one by one."
+)
+
+THRESHOLD_DESCRIPTION = "Units at or below which a listing counts as low, a whole number, 0 or more."
 
 SAVE_PREFERENCE_DESCRIPTION = (
     "Remember one of the seller's lasting preferences across sessions, replacing any earlier "
@@ -84,6 +92,9 @@ def build_tools(settings: Settings) -> list[BaseTool]:
     def listing(name: Annotated[str, Field(description=LISTING_NAME_DESCRIPTION)]) -> dict:
         return find_listing(seller_id, name)
 
+    def low_stock(threshold: Annotated[int, Field(description=THRESHOLD_DESCRIPTION)]) -> dict:
+        return list_low_stock(seller_id, threshold)
+
     return [
         StructuredTool.from_function(
             func=sales, name="get_sales_analytics", description=SALES_DESCRIPTION
@@ -93,6 +104,9 @@ def build_tools(settings: Settings) -> list[BaseTool]:
         ),
         StructuredTool.from_function(
             func=listing, name="find_listing", description=FIND_LISTING_DESCRIPTION
+        ),
+        StructuredTool.from_function(
+            func=low_stock, name="list_low_stock", description=LOW_STOCK_DESCRIPTION
         ),
     ]
 

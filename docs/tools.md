@@ -308,6 +308,15 @@ returned, so a typo still resolves. `data` is `{"matches": [{"sku", "title", "st
 with at most 3 matches; several matches are for the agent to put to the seller. Synonyms and word
 reordering do not match (that is the RAG listings option, `plan/rag-05-listings-domain.md`).
 
+### `list_low_stock(threshold: int)`
+
+Catalog-wide low-stock list, so "which products are low?" is one call instead of one
+`check_inventory_status` per SKU. `data` is `{"threshold", "count", "items": [{"sku", "title",
+"stock_qty", "status"}], "truncated"}`: listings with `stock_qty <= threshold`, lowest first,
+`items` capped at 20 (`count` is every match). `status` and `stock_qty` are verbatim, so the seeded
+Active-at-0 listings (SKU-1013, SKU-1020) come back as-is. The agent passes the saved
+`restock_threshold` preference, else 5, and says which it used. Not cached (like `find_listing`).
+
 ## 5. Error codes
 
 | Code | Tool | Meaning | What the agent tells the seller |
@@ -317,6 +326,7 @@ reordering do not match (that is the RAG listings option, `plan/rag-05-listings-
 | `INVALID_SKU` | `check_inventory_status` | The input isn't in `SKU-1234` form | Ask for the SKU code. If the seller gave a product name, call `find_listing` with it. |
 | `INVALID_NAME` | `find_listing` | The name is under 4 letters/digits once spaces and punctuation are dropped | Ask for more of the product name or the SKU. |
 | `UNKNOWN_LISTING` | `find_listing` | No title in the seller's catalog matches the name, even fuzzily | Say no listing matched; ask for more of the name or the SKU. |
+| `INVALID_THRESHOLD` | `list_low_stock` | The threshold is negative | Ask for a stock level of 0 or more. |
 | `UNKNOWN_SKU` | `check_inventory_status` | The SKU is well-formed but not in the seller's catalog | Say that SKU isn't in their catalog and ask them to check the code. Don't invent stock figures. |
 | `TIMEOUT` | either | The tool didn't return in time. Not emitted by the in-process tools today; the agent eval injects it (`evals/faults.py`, AE-19/AE-20) ahead of the MCP transport, where it can really happen | Say the check failed and give no figure for what was asked. Sales are dated per row, so a separate, successful call for the last day with data may be reported, dated. Stock has no as-of date, so there is no stock fallback. No code-specific prompt rule yet: the general `ok: false` rule covers it. |
 
