@@ -30,6 +30,7 @@ from seller_pulse.tools import (
     LOW_STOCK_DESCRIPTION,
     PERIOD_DESCRIPTION,
     SALES_DESCRIPTION,
+    SALES_SKU_DESCRIPTION,
     SKU_DESCRIPTION,
     THRESHOLD_DESCRIPTION,
 )
@@ -41,8 +42,11 @@ def build_server(settings: Settings) -> FastMCP:
     server = FastMCP("seller-pulse")
 
     @server.tool(name="get_sales_analytics", description=SALES_DESCRIPTION)
-    def sales(period: Annotated[str, Field(description=PERIOD_DESCRIPTION)]) -> dict:
-        return get_sales_analytics(seller_id, period)
+    def sales(
+        period: Annotated[str, Field(description=PERIOD_DESCRIPTION)],
+        sku: Annotated[str | None, Field(description=SALES_SKU_DESCRIPTION)] = None,
+    ) -> dict:
+        return get_sales_analytics(seller_id, period, sku)
 
     @server.tool(name="check_inventory_status", description=INVENTORY_DESCRIPTION)
     def inventory(sku: Annotated[str, Field(description=SKU_DESCRIPTION)]) -> dict:

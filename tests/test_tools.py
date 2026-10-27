@@ -26,12 +26,12 @@ def test_tool_names():
     assert [t.name for t in build_tools(SETTINGS)] == ["get_sales_analytics", "check_inventory_status", "find_listing", "list_low_stock"]
 
 
-@pytest.mark.parametrize("name, arg", [("get_sales_analytics", "period"), ("check_inventory_status", "sku")])
-def test_schema_hides_seller_id(name, arg):
+@pytest.mark.parametrize("name, args", [("get_sales_analytics", ["period", "sku"]), ("check_inventory_status", ["sku"])])
+def test_schema_hides_seller_id(name, args):
     # The exact payload bind_tools sends to the model.
     schema = convert_to_openai_tool(_tools()[name])["function"]
-    assert list(schema["parameters"]["properties"]) == [arg]
-    assert schema["parameters"]["properties"][arg]["description"]
+    assert list(schema["parameters"]["properties"]) == args
+    assert all(schema["parameters"]["properties"][a]["description"] for a in args)
     assert "seller_id" not in json.dumps(schema)
 
 

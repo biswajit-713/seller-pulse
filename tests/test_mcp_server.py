@@ -36,11 +36,11 @@ async def test_tool_names():
     assert [t.name for t in await _tools()] == ["get_sales_analytics", "check_inventory_status", "find_listing", "list_low_stock"]
 
 
-@pytest.mark.parametrize("name, arg", [("get_sales_analytics", "period"), ("check_inventory_status", "sku")])
-async def test_schema_hides_seller_id(name, arg):
+@pytest.mark.parametrize("name, args", [("get_sales_analytics", ["period", "sku"]), ("check_inventory_status", ["sku"])])
+async def test_schema_hides_seller_id(name, args):
     tool = {t.name: t for t in await _tools()}[name]
-    assert list(tool.inputSchema["properties"]) == [arg]
-    assert tool.inputSchema["properties"][arg]["description"]
+    assert list(tool.inputSchema["properties"]) == args
+    assert all(tool.inputSchema["properties"][a]["description"] for a in args)
     assert "seller_id" not in json.dumps(tool.inputSchema)
 
 

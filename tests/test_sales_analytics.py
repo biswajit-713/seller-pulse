@@ -65,3 +65,29 @@ def test_window_reaching_data_end_is_not_complete():  # SQ-09
     assert get_sales_analytics(SELLER, "2026-08-01..2026-08-31")["data"]["period_complete"] is True
     assert get_sales_analytics(SELLER, "this_month")["data"]["period_complete"] is False
     assert get_sales_analytics(SELLER, "2026-09-01..2026-09-25")["data"]["period_complete"] is False
+
+
+def test_sku_scopes_figures_and_normalises():
+    store = get_sales_analytics(SELLER, "last_week")["data"]
+    data = get_sales_analytics(SELLER, "last_week", " sku-1001 ")["data"]
+    assert data["sku"] == "SKU-1001"
+    assert 0 <= data["units_sold"] < store["units_sold"]
+    assert data["order_lines"] <= store["order_lines"]
+    assert data["days_with_data"] == store["days_with_data"]
+    assert data["previous"]["start"] == store["previous"]["start"]
+
+
+def test_sku_without_sales_in_window_is_zero_not_no_data():
+    data = get_sales_analytics(SELLER, "2026-09-25", "SKU-1013")["data"]
+    assert (data["units_sold"], data["order_lines"], data["revenue_usd"]) == (0, 0, 0)
+
+
+def test_sku_still_no_data_when_store_has_none():
+    result = get_sales_analytics(SELLER, "yesterday", "SKU-1001")
+    assert result["error"]["code"] == "NO_DATA_FOR_PERIOD"
+
+
+def test_invalid_and_unknown_sku():
+    assert get_sales_analytics(SELLER, "last_week", "wall hanging")["error"]["code"] == "INVALID_SKU"
+    assert get_sales_analytics(SELLER, "last_week", "SKU-9999")["error"]["code"] == "UNKNOWN_SKU"
+    assert get_sales_analytics("SELLER-999", "last_week", "SKU-1001")["error"]["code"] == "UNKNOWN_SKU"

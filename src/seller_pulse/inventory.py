@@ -69,7 +69,7 @@ def catalog_size() -> int:
     return len(_LISTINGS)
 
 
-_SKU_PATTERN = re.compile(r"^SKU-\d{4}$")
+SKU_PATTERN = re.compile(r"^SKU-\d{4}$")
 
 
 def _error(code: str, message: str) -> dict:
@@ -86,7 +86,7 @@ def check_inventory_status(seller_id: str, sku: str) -> dict:
     `status` and `stock_qty` are reported verbatim — never derived from each other.
     """
     normalised = normalise_sku(sku)
-    if not _SKU_PATTERN.match(normalised):
+    if not SKU_PATTERN.match(normalised):
         return _error("INVALID_SKU", f"'{sku.strip()}' is not a SKU. Expected the form SKU-1234.")
 
     listing = get_listing(normalised)

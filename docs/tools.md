@@ -14,7 +14,7 @@ The domain functions take `seller_id`, matching `docs/tasks.md` #12's
 `get_sales_analytics(seller_id, period)`:
 
 ```python
-get_sales_analytics(seller_id: str, period: str) -> dict
+get_sales_analytics(seller_id: str, period: str, sku: str | None = None) -> dict
 check_inventory_status(seller_id: str, sku: str) -> dict
 ```
 
@@ -70,10 +70,14 @@ Every tool returns one of two shapes, and never raises for bad input:
 - An error is a normal result, not an exception. The agent loop passes it back to the model like
   any other tool output. Exceptions are kept for real bugs, such as a missing CSV.
 
-## 3. `get_sales_analytics(period: str)`
+## 3. `get_sales_analytics(period: str, sku: str | None = None)`
 
 Revenue, units and order lines for one inclusive date window, plus the prior equal-length window
-for the trend.
+for the trend. With `sku` (normalised and validated like §4's), the three figures cover that
+listing only and `data` carries `sku`; omitted, they cover the whole store. `days_with_data`,
+`data_start` and `data_end` always describe the store's recorded days, so a SKU with no sales on
+a recorded day reports zero units, while a window with no store rows is still
+`NO_DATA_FOR_PERIOD`. `INVALID_SKU` / `UNKNOWN_SKU` apply as in §4.
 
 ### Period grammar
 
@@ -323,11 +327,11 @@ Active-at-0 listings (SKU-1013, SKU-1020) come back as-is. The agent passes the 
 |---|---|---|---|
 | `INVALID_PERIOD` | `get_sales_analytics` | The period couldn't be parsed, the range is reversed, or it ends in the future | Say which time range it couldn't understand and suggest a supported one (e.g. "last week", or a date range). Don't guess a window. |
 | `NO_DATA_FOR_PERIOD` | `get_sales_analytics` | The window has zero sales rows for this seller | Say plainly there's no sales data for that period and give the last date that has data. **Never report $0 or zero units.** Offer the last day/period that has data. |
-| `INVALID_SKU` | `check_inventory_status` | The input isn't in `SKU-1234` form | Ask for the SKU code. If the seller gave a product name, call `find_listing` with it. |
+| `INVALID_SKU` | `check_inventory_status`, `get_sales_analytics` | The input isn't in `SKU-1234` form | Ask for the SKU code. If the seller gave a product name, call `find_listing` with it. |
 | `INVALID_NAME` | `find_listing` | The name is under 4 letters/digits once spaces and punctuation are dropped | Ask for more of the product name or the SKU. |
 | `UNKNOWN_LISTING` | `find_listing` | No title in the seller's catalog matches the name, even fuzzily | Say no listing matched; ask for more of the name or the SKU. |
 | `INVALID_THRESHOLD` | `list_low_stock` | The threshold is negative | Ask for a stock level of 0 or more. |
-| `UNKNOWN_SKU` | `check_inventory_status` | The SKU is well-formed but not in the seller's catalog | Say that SKU isn't in their catalog and ask them to check the code. Don't invent stock figures. |
+| `UNKNOWN_SKU` | `check_inventory_status`, `get_sales_analytics` | The SKU is well-formed but not in the seller's catalog | Say that SKU isn't in their catalog and ask them to check the code. Don't invent stock figures. |
 | `TIMEOUT` | either | The tool didn't return in time. Not emitted by the in-process tools today; the agent eval injects it (`evals/faults.py`, AE-19/AE-20) ahead of the MCP transport, where it can really happen | Say the check failed and give no figure for what was asked. Sales are dated per row, so a separate, successful call for the last day with data may be reported, dated. Stock has no as-of date, so there is no stock fallback. No code-specific prompt rule yet: the general `ok: false` rule covers it. |
 
 ## 6. Memory tools

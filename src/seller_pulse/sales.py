@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 
 from seller_pulse.config import DEFAULT_SALES_PATH
+from seller_pulse.inventory import SKU_PATTERN, get_listing, normalise_sku
 from seller_pulse.prompts import TODAY
 
 
@@ -133,11 +134,18 @@ def _error(code: str, message: str) -> dict:
     return {"ok": False, "error": {"code": code, "message": message}}
 
 
-def _window_totals(rows: list[SaleRow], start: date, end: date) -> dict | None:
-    """Totals for the inclusive window, or `None` if it has no rows (no data is not zero)."""
+def _window_totals(
+    rows: list[SaleRow], start: date, end: date, sku: str | None = None
+) -> dict | None:
+    """Totals for the inclusive window, or `None` if the seller has no rows in it (no data is
+    not zero). With `sku`, the figures cover that SKU only, while `days_with_data` still counts
+    the seller's recorded days: a SKU with no sales on a recorded day sold zero, not unknown."""
     in_window = [r for r in rows if start <= r.date <= end]
     if not in_window:
         return None
+    recorded_days = {r.date for r in in_window}
+    if sku is not None:
+        in_window = [r for r in in_window if r.sku == sku]
     return {
         "start": start.isoformat(),
         "end": end.isoformat(),
@@ -146,13 +154,26 @@ def _window_totals(rows: list[SaleRow], start: date, end: date) -> dict | None:
         "units_sold": sum(r.units_sold for r in in_window),
         "order_lines": len(in_window),
         "days_in_window": (end - start).days + 1,
-        "days_with_data": len({r.date for r in in_window}),
+        "days_with_data": len(recorded_days),
     }
 
 
-def get_sales_analytics(seller_id: str, period: str, *, today: date | None = None) -> dict:
-    """Return the docs/tools.md envelope. Never raises for bad input."""
+def get_sales_analytics(
+    seller_id: str, period: str, sku: str | None = None, *, today: date | None = None
+) -> dict:
+    """Return the docs/tools.md envelope. Never raises for bad input.
+
+    `sku` narrows revenue, units and order lines to one listing; omitted, they cover the seller.
+    """
     today = today or date.fromisoformat(TODAY)
+    if sku is not None:
+        sku = normalise_sku(sku)
+        if not SKU_PATTERN.match(sku):
+            return _error("INVALID_SKU", f"'{sku}' is not a SKU. Expected the form SKU-1234.")
+        listing = get_listing(sku)
+        # Another tenant's SKU is reported as unknown, so the error never reveals it exists.
+        if listing is None or listing.seller_id != seller_id:
+            return _error("UNKNOWN_SKU", f"{sku} is not in your catalog.")
     try:
         start, end = resolve_period(period, today)
     except PeriodError as e:
@@ -160,7 +181,7 @@ def get_sales_analytics(seller_id: str, period: str, *, today: date | None = Non
 
     # Tenant filter first: an unknown seller sees no rows, never another seller's.
     rows = [r for r in _SALES if r.seller_id == seller_id]
-    current = _window_totals(rows, start, end)
+    current = _window_totals(rows, start, end, sku)
     if current is None:
         window = f"{start.isoformat()}..{end.isoformat()}"
         if not rows:
@@ -175,11 +196,12 @@ def get_sales_analytics(seller_id: str, period: str, *, today: date | None = Non
         "ok": True,
         "data": {
             "period": normalise_period(period),
+            **({"sku": sku} if sku else {}),
             **current,
             # A window reaching the last recorded date is still filling in. `previous` always
             # ends before `start`, so it is complete whenever it exists.
             "period_complete": end < data_end,
-            "previous": _window_totals(rows, prev_end - length, prev_end),
+            "previous": _window_totals(rows, prev_end - length, prev_end, sku),
             "data_start": min(r.date for r in rows).isoformat(),
             "data_end": data_end.isoformat(),
         },

@@ -27,7 +27,8 @@ from seller_pulse.sales import PERIOD_GRAMMAR, get_sales_analytics
 SALES_DESCRIPTION = (
     "Revenue (USD), units sold and order lines for one inclusive date window, plus the "
     "previous window of the same length for a trend, and how many days in each window have "
-    "data. Use this for any sales figure — never estimate."
+    "data. Covers the whole store, or one SKU when a SKU is given. Use this for any sales "
+    "figure — never estimate."
 )
 
 PERIOD_DESCRIPTION = f"One of: {PERIOD_GRAMMAR}. Weeks run Mon–Sun."
@@ -38,6 +39,11 @@ INVENTORY_DESCRIPTION = (
 )
 
 SKU_DESCRIPTION = "The SKU code, in the form SKU-1234."
+
+SALES_SKU_DESCRIPTION = (
+    "Optional SKU code, in the form SKU-1234, to report that one listing's sales instead of "
+    "the whole store's. Omit for store-wide figures."
+)
 
 FIND_LISTING_DESCRIPTION = (
     "Find the seller's listing SKUs from a product name, as the seller wrote it (case, spacing and "
@@ -83,8 +89,11 @@ def build_tools(settings: Settings) -> list[BaseTool]:
     """In-process tools, seller_id closed over from settings."""
     seller_id = settings.seller_id
 
-    def sales(period: Annotated[str, Field(description=PERIOD_DESCRIPTION)]) -> dict:
-        return get_sales_analytics(seller_id, period)
+    def sales(
+        period: Annotated[str, Field(description=PERIOD_DESCRIPTION)],
+        sku: Annotated[str | None, Field(description=SALES_SKU_DESCRIPTION)] = None,
+    ) -> dict:
+        return get_sales_analytics(seller_id, period, sku)
 
     def inventory(sku: Annotated[str, Field(description=SKU_DESCRIPTION)]) -> dict:
         return check_inventory_status(seller_id, sku)
