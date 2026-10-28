@@ -16,6 +16,7 @@ from typing import Any
 from langchain_core.tools import BaseTool
 
 from seller_pulse.agent import ToolCallRecord, run_agent
+from seller_pulse.formatters import render_answer
 from seller_pulse.guardrails import GuardrailReport, annotate, check_output
 from seller_pulse.llm.base import LLMClient, Message
 from seller_pulse.memory import Preference, PreferenceStore
@@ -135,8 +136,10 @@ async def respond(
     for record in result.tool_calls:
         _log_tool_call(record)
 
+    # A lone analytics call is rendered in code so the same question reads the same every time.
+    text = render_answer(result.tool_calls, preferences) or result.text
     report = check_output(
-        result.text,
+        text,
         trace=result.tool_calls,
         retrieved_context=context_block,
         query=clean,
@@ -154,7 +157,7 @@ async def respond(
         report.policy_refusal,
         report.policy_clauses,
     )
-    final = annotate(result.text, report)
+    final = annotate(text, report)
     logger.info("turn_ms=%d", (time.perf_counter() - started) * 1000)
     return ChatResult(
         text=final,
