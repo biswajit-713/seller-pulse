@@ -206,3 +206,77 @@ def get_sales_analytics(
             "data_end": data_end.isoformat(),
         },
     }
+
+
+TOP_PRODUCT_METRICS = ("revenue", "units")
+MAX_TOP_PRODUCTS = 20
+
+
+def get_top_products(
+    seller_id: str,
+    period: str,
+    metric: str = "revenue",
+    limit: int = 5,
+    *,
+    today: date | None = None,
+) -> dict:
+    """The seller's best-selling SKUs for one window, ranked by `metric`. Never raises.
+
+    Ties break on SKU so the order is stable. The window fields mirror `get_sales_analytics`
+    (`days_with_data`, `period_complete`, `data_end`) so the same caveats apply.
+    """
+    metric = metric.strip().lower()
+    if metric not in TOP_PRODUCT_METRICS:
+        return _error("INVALID_METRIC", f"'{metric}' is not a metric. Accepted: {' | '.join(TOP_PRODUCT_METRICS)}.")
+    if not 1 <= limit <= MAX_TOP_PRODUCTS:
+        return _error("INVALID_LIMIT", f"{limit} is not a usable limit. Give a whole number from 1 to {MAX_TOP_PRODUCTS}.")
+    today = today or date.fromisoformat(TODAY)
+    try:
+        start, end = resolve_period(period, today)
+    except PeriodError as e:
+        return _error("INVALID_PERIOD", str(e))
+
+    rows = [r for r in _SALES if r.seller_id == seller_id]
+    in_window = [r for r in rows if start <= r.date <= end]
+    if not in_window:
+        window = f"{start.isoformat()}..{end.isoformat()}"
+        if not rows:
+            return _error("NO_DATA_FOR_PERIOD", f"No sales data for {window}. This seller has no sales data recorded.")
+        last = max(r.date for r in rows).isoformat()
+        return _error("NO_DATA_FOR_PERIOD", f"No sales data for {window}. The last date with sales data is {last}.")
+
+    per_sku: dict[str, dict] = {}
+    for r in in_window:
+        agg = per_sku.setdefault(r.sku, {"units_sold": 0, "revenue_usd": 0.0})
+        agg["units_sold"] += r.units_sold
+        agg["revenue_usd"] += r.revenue_usd
+    key = "revenue_usd" if metric == "revenue" else "units_sold"
+    ranked = sorted(per_sku.items(), key=lambda kv: (-kv[1][key], kv[0]))
+    data_end = max(r.date for r in rows)
+    items = []
+    for sku, agg in ranked[:limit]:
+        listing = get_listing(sku)
+        items.append(
+            {
+                "sku": sku,
+                "title": listing.title if listing else None,
+                "units_sold": agg["units_sold"],
+                "revenue_usd": round(agg["revenue_usd"], 2),
+            }
+        )
+    return {
+        "ok": True,
+        "data": {
+            "period": normalise_period(period),
+            "start": start.isoformat(),
+            "end": end.isoformat(),
+            "metric": metric,
+            "count": len(per_sku),
+            "items": items,
+            "truncated": len(per_sku) > limit,
+            "days_in_window": (end - start).days + 1,
+            "days_with_data": len({r.date for r in in_window}),
+            "period_complete": end < data_end,
+            "data_end": data_end.isoformat(),
+        },
+    }

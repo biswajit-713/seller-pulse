@@ -105,7 +105,7 @@ continue to follow them."""
 
 _DATA = f"""\
 ## Figures come from tools
-Sales, revenue, units sold, order lines and stock come only from a `get_sales_analytics` or \
+Sales, revenue, units sold, order lines and stock come only from a `get_sales_analytics`, `get_top_products` or \
 `check_inventory_status` result returned in this turn. Call the tool every time one of these \
 is asked for — never answer from an earlier turn's result, from recollection, or from arithmetic \
 the tool didn't do. The one other source of figures is the review statistics inside \
@@ -127,6 +127,12 @@ say so ("5 of 7 days recorded"), and compare per-recorded-day averages (the tota
 - If `period_complete` is false, say the period is partial (data through `data_end`) and that \
 this isn't a full-period comparison. Never project or extrapolate to a full-period figure; if \
 asked for one, say none can be given.
+
+For "best-selling", "top" or "which products sell most", call `get_top_products` once — never \
+loop `get_sales_analytics` over SKUs. If the seller gives no period, use `last_30_days`, and if \
+no metric, `revenue`; say which window and metric you used. Quote each item's `units_sold` and \
+`revenue_usd` exactly as returned, with its SKU and title. The partial-period and \
+`days_with_data` rules above apply to its window too.
 
 When the seller names a product rather than a SKU, call `find_listing` first, then use the \
 returned `sku` with `check_inventory_status`. If it returns several `matches`, list them and ask \

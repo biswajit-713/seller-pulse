@@ -22,7 +22,7 @@ from pydantic import Field
 from seller_pulse.config import Settings
 from seller_pulse.inventory import check_inventory_status, find_listing, list_low_stock
 from seller_pulse.memory import PreferenceKey, PreferenceStore
-from seller_pulse.sales import PERIOD_GRAMMAR, get_sales_analytics
+from seller_pulse.sales import MAX_TOP_PRODUCTS, PERIOD_GRAMMAR, get_sales_analytics, get_top_products
 
 SALES_DESCRIPTION = (
     "Revenue (USD), units sold and order lines for one inclusive date window, plus the "
@@ -30,6 +30,16 @@ SALES_DESCRIPTION = (
     "data. Covers the whole store, or one SKU when a SKU is given. Use this for any sales "
     "figure — never estimate."
 )
+
+TOP_PRODUCTS_DESCRIPTION = (
+    "The seller's best-selling products (SKU, title, units sold, revenue in USD) for one "
+    "inclusive date window, ranked by revenue or units. Use this for any best-seller, "
+    "top-product or ranking question — never call get_sales_analytics SKU by SKU."
+)
+
+METRIC_DESCRIPTION = "What to rank by: 'revenue' (default) or 'units'."
+
+LIMIT_DESCRIPTION = f"How many products to return, 1 to {MAX_TOP_PRODUCTS}. Default 5."
 
 PERIOD_DESCRIPTION = f"One of: {PERIOD_GRAMMAR}. Weeks run Mon–Sun."
 
@@ -104,6 +114,13 @@ def build_tools(settings: Settings) -> list[BaseTool]:
     def low_stock(threshold: Annotated[int, Field(description=THRESHOLD_DESCRIPTION)]) -> dict:
         return list_low_stock(seller_id, threshold)
 
+    def top_products(
+        period: Annotated[str, Field(description=PERIOD_DESCRIPTION)],
+        metric: Annotated[str, Field(description=METRIC_DESCRIPTION)] = "revenue",
+        limit: Annotated[int, Field(description=LIMIT_DESCRIPTION)] = 5,
+    ) -> dict:
+        return get_top_products(seller_id, period, metric, limit)
+
     return [
         StructuredTool.from_function(
             func=sales, name="get_sales_analytics", description=SALES_DESCRIPTION
@@ -116,6 +133,9 @@ def build_tools(settings: Settings) -> list[BaseTool]:
         ),
         StructuredTool.from_function(
             func=low_stock, name="list_low_stock", description=LOW_STOCK_DESCRIPTION
+        ),
+        StructuredTool.from_function(
+            func=top_products, name="get_top_products", description=TOP_PRODUCTS_DESCRIPTION
         ),
     ]
 

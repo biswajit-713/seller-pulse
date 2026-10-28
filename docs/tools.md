@@ -312,6 +312,19 @@ returned, so a typo still resolves. `data` is `{"matches": [{"sku", "title", "st
 with at most 3 matches; several matches are for the agent to put to the seller. Synonyms and word
 reordering do not match (that is the RAG listings option, `plan/rag-05-listings-domain.md`).
 
+### `get_top_products(period: str, metric: str = "revenue", limit: int = 5)`
+
+Catalog-wide ranking, so "what's my best-seller?" is one call instead of one `get_sales_analytics`
+per SKU. `period` uses the §3 grammar; `metric` is `revenue` (default) or `units`; `limit` is 1–20.
+`data` is `{"period", "start", "end", "metric", "count", "items": [{"sku", "title", "units_sold",
+"revenue_usd"}], "truncated", "days_in_window", "days_with_data", "period_complete", "data_end"}`:
+the seller's SKUs with sales in the window, best first (ties by SKU), `items` capped at `limit`
+(`count` is every SKU with sales). The window fields mean what they do in §3, so the same
+partial-period and `days_with_data` caveats apply. With no period or metric from the seller, the
+agent uses `last_30_days` and `revenue` and says so. Cached like `get_sales_analytics`.
+
+Errors: `INVALID_PERIOD` and `NO_DATA_FOR_PERIOD` as §3; `INVALID_METRIC` and `INVALID_LIMIT` per §5.
+
 ### `list_low_stock(threshold: int)`
 
 Catalog-wide low-stock list, so "which products are low?" is one call instead of one
@@ -325,11 +338,13 @@ Active-at-0 listings (SKU-1013, SKU-1020) come back as-is. The agent passes the 
 
 | Code | Tool | Meaning | What the agent tells the seller |
 |---|---|---|---|
-| `INVALID_PERIOD` | `get_sales_analytics` | The period couldn't be parsed, the range is reversed, or it ends in the future | Say which time range it couldn't understand and suggest a supported one (e.g. "last week", or a date range). Don't guess a window. |
-| `NO_DATA_FOR_PERIOD` | `get_sales_analytics` | The window has zero sales rows for this seller | Say plainly there's no sales data for that period and give the last date that has data. **Never report $0 or zero units.** Offer the last day/period that has data. |
+| `INVALID_PERIOD` | `get_sales_analytics`, `get_top_products` | The period couldn't be parsed, the range is reversed, or it ends in the future | Say which time range it couldn't understand and suggest a supported one (e.g. "last week", or a date range). Don't guess a window. |
+| `NO_DATA_FOR_PERIOD` | `get_sales_analytics`, `get_top_products` | The window has zero sales rows for this seller | Say plainly there's no sales data for that period and give the last date that has data. **Never report $0 or zero units.** Offer the last day/period that has data. |
 | `INVALID_SKU` | `check_inventory_status`, `get_sales_analytics` | The input isn't in `SKU-1234` form | Ask for the SKU code. If the seller gave a product name, call `find_listing` with it. |
 | `INVALID_NAME` | `find_listing` | The name is under 4 letters/digits once spaces and punctuation are dropped | Ask for more of the product name or the SKU. |
 | `UNKNOWN_LISTING` | `find_listing` | No title in the seller's catalog matches the name, even fuzzily | Say no listing matched; ask for more of the name or the SKU. |
+| `INVALID_METRIC` | `get_top_products` | The metric is not `revenue` or `units` | Rank by revenue or units; say which. |
+| `INVALID_LIMIT` | `get_top_products` | The limit is outside 1–20 | Use a count from 1 to 20. |
 | `INVALID_THRESHOLD` | `list_low_stock` | The threshold is negative | Ask for a stock level of 0 or more. |
 | `UNKNOWN_SKU` | `check_inventory_status`, `get_sales_analytics` | The SKU is well-formed but not in the seller's catalog | Say that SKU isn't in their catalog and ask them to check the code. Don't invent stock figures. |
 | `TIMEOUT` | either | The tool didn't return in time. Not emitted by the in-process tools today; the agent eval injects it (`evals/faults.py`, AE-19/AE-20) ahead of the MCP transport, where it can really happen | Say the check failed and give no figure for what was asked. Sales are dated per row, so a separate, successful call for the last day with data may be reported, dated. Stock has no as-of date, so there is no stock fallback. No code-specific prompt rule yet: the general `ok: false` rule covers it. |

@@ -22,17 +22,20 @@ from pydantic import Field
 
 from seller_pulse.config import Settings, load_settings
 from seller_pulse.inventory import check_inventory_status, find_listing, list_low_stock
-from seller_pulse.sales import get_sales_analytics
+from seller_pulse.sales import get_sales_analytics, get_top_products
 from seller_pulse.tools import (
     FIND_LISTING_DESCRIPTION,
     INVENTORY_DESCRIPTION,
+    LIMIT_DESCRIPTION,
     LISTING_NAME_DESCRIPTION,
     LOW_STOCK_DESCRIPTION,
+    METRIC_DESCRIPTION,
     PERIOD_DESCRIPTION,
     SALES_DESCRIPTION,
     SALES_SKU_DESCRIPTION,
     SKU_DESCRIPTION,
     THRESHOLD_DESCRIPTION,
+    TOP_PRODUCTS_DESCRIPTION,
 )
 
 
@@ -59,6 +62,14 @@ def build_server(settings: Settings) -> FastMCP:
     @server.tool(name="list_low_stock", description=LOW_STOCK_DESCRIPTION)
     def low_stock(threshold: Annotated[int, Field(description=THRESHOLD_DESCRIPTION)]) -> dict:
         return list_low_stock(seller_id, threshold)
+
+    @server.tool(name="get_top_products", description=TOP_PRODUCTS_DESCRIPTION)
+    def top_products(
+        period: Annotated[str, Field(description=PERIOD_DESCRIPTION)],
+        metric: Annotated[str, Field(description=METRIC_DESCRIPTION)] = "revenue",
+        limit: Annotated[int, Field(description=LIMIT_DESCRIPTION)] = 5,
+    ) -> dict:
+        return get_top_products(seller_id, period, metric, limit)
 
     return server
 

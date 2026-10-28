@@ -87,6 +87,6 @@ def test_bad_case_file_raises_harness_error(tmp_path, cases, message):
 
 def test_real_case_file_loads():
     cases = load_cases()
-    assert len(cases) == 20
-    assert sum(c.scored for c in cases) == 16
+    assert len(cases) == 21
+    assert sum(c.scored for c in cases) == 17
     assert DEFAULT_AGENT_CASES_PATH.exists()

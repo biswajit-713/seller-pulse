@@ -91,7 +91,7 @@ class CacheStats:
 
 
 # Read-only tools only; memory tools have side effects and are never cached.
-CACHED_TOOLS = frozenset({"get_sales_analytics", "check_inventory_status"})
+CACHED_TOOLS = frozenset({"get_sales_analytics", "check_inventory_status", "get_top_products"})
 
 
 def tool_key(name: str, args: dict) -> str:

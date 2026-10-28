@@ -39,7 +39,7 @@ unclassified suspect fails.
 first choices, are no longer on Groq. It sees the same retrieved context the agent got. Agent
 and judge both run at temperature 0, in the eval only.
 
-**Threshold:** 80% of scored cases (13/16). Known-gap cases run and are reported but don't
+**Threshold:** 80% of scored cases (14/17). Known-gap cases run and are reported but don't
 count. Dimension and bucket rates are diagnostic.
 
 ## Cases
@@ -68,8 +68,9 @@ count. Dimension and bucket rates are diagnostic.
 | AE-18 | SQ-30 — patio cushion sales (needs catalogue search + per-SKU sales) | sales | known_gap |
 | AE-19 | SQ-24 — low-stock list, inventory tool times out | fault | known_gap |
 | AE-20 | SQ-37 — sales today, `today` call times out | fault | scored |
+| AE-21 | SQ-35 — top product by revenue this month (`get_top_products`) | sales | scored |
 
-Not in the file: memory, catalogue-wide inventory, per-SKU/category sales.
+Not in the file: memory, catalogue-wide inventory, category sales.
 
 ### Fault injection
 
