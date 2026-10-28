@@ -1,10 +1,11 @@
 import asyncio
 import typing
+from pathlib import Path
 
 import langchain_groq
 import pytest
 
-from seller_pulse.config import DEFAULT_ROUTER_MODEL, load_settings
+from seller_pulse.config import DEFAULT_ROUTER_MODEL, Settings, load_settings
 from seller_pulse.evals.route_cases import load_route_cases
 from seller_pulse.llm import get_router_client
 from seller_pulse.router import (
@@ -18,7 +19,9 @@ from seller_pulse.router import (
     build_messages,
     classify_query,
     route_all,
+    tools_for,
 )
+from seller_pulse.tools import build_tools
 
 
 class FakeRouterModel:
@@ -207,3 +210,17 @@ async def test_build_classifier_on_binds_the_router_model(monkeypatch):
     classify = build_classifier(load_settings())
     assert classify.func is classify_query
     assert classify.args[0].kwargs["model"] == DEFAULT_ROUTER_MODEL
+
+
+def test_review_summary_bound_on_reviews_route_only():
+    tools = build_tools(Settings(
+        llm_provider="groq",
+        groq_api_key=None,
+        groq_model="test-model",
+        server_port=7860,
+        chroma_path=Path("unused"),
+        seller_id="SELLER-001",
+    ))
+    bound = lambda routes: {t.name for t in tools_for(frozenset(routes), tools)}
+    assert "get_review_summary" in bound({Route.REVIEWS})
+    assert "get_review_summary" not in bound({Route.DATA, Route.POLICY})

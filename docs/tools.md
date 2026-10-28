@@ -338,6 +338,20 @@ Catalog-wide low-stock list, so "which products are low?" is one call instead of
 Active-at-0 listings (SKU-1013, SKU-1020) come back as-is. The agent passes the saved
 `restock_threshold` preference, else 5, and says which it used. Not cached (like `find_listing`).
 
+### `get_review_summary(has_reviews=None, rating=None, max_avg_rating=None, limit=20)`
+
+Per-product review aggregation, so "which products have no reviews?" and "which have a 1-star?"
+are one call, not a top-k retrieval (an unreviewed SKU has no review text to match). Left-joins
+the seller's listings to `reviews.csv`. Filters combine: `has_reviews` false/true, `rating` 1–5
+(at least one review at exactly that rating), `max_avg_rating` 1–5 (reviewed products only).
+`data` is `{"count", "items": [{"sku", "title", "review_count", "avg_rating", "lowest_rating"}],
+"truncated"}`, lowest average first, unreviewed last (`avg_rating`/`lowest_rating` null);
+`items` capped at `limit` (1–100, default 20; `count` is every match). Rows report the whole
+picture even under a `rating` filter. Counts and ratings only — review text stays with RAG.
+Bound on the `reviews` route; cached (static data).
+
+Errors: `INVALID_RATING` and `INVALID_LIMIT` per §5.
+
 ## 5. Error codes
 
 | Code | Tool | Meaning | What the agent tells the seller |
@@ -348,7 +362,8 @@ Active-at-0 listings (SKU-1013, SKU-1020) come back as-is. The agent passes the 
 | `INVALID_NAME` | `find_listing` | The name is under 4 letters/digits once spaces and punctuation are dropped | Ask for more of the product name or the SKU. |
 | `UNKNOWN_LISTING` | `find_listing` | No title in the seller's catalog matches the name, even fuzzily | Say no listing matched; ask for more of the name or the SKU. |
 | `INVALID_METRIC` | `get_top_products` | The metric is not `revenue` or `units` | Rank by revenue or units; say which. |
-| `INVALID_LIMIT` | `get_top_products` | The limit is outside 1–20 | Use a count from 1 to 20. |
+| `INVALID_LIMIT` | `get_top_products`, `get_review_summary` | The limit is outside the allowed range (1–20; 1–100 for reviews) | Use a count in that range. |
+| `INVALID_RATING` | `get_review_summary` | `rating` or `max_avg_rating` is outside 1–5 | Ask for a star rating from 1 to 5. |
 | `INVALID_GROUP_BY` | `get_top_products` | The grouping is not `sku` or `category` | Group by product or by category; say which. |
 | `INVALID_THRESHOLD` | `list_low_stock` | The threshold is negative | Ask for a stock level of 0 or more. |
 | `UNKNOWN_SKU` | `check_inventory_status`, `get_sales_analytics` | The SKU is well-formed but not in the seller's catalog | Say that SKU isn't in their catalog and ask them to check the code. Don't invent stock figures. |

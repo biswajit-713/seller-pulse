@@ -26,7 +26,7 @@ from seller_pulse.config import Settings
 logger = logging.getLogger(__name__)
 
 SERVER_NAME = "seller-pulse"
-EXPECTED_TOOLS = frozenset({"get_sales_analytics", "check_inventory_status", "find_listing", "list_low_stock", "get_top_products"})
+EXPECTED_TOOLS = frozenset({"get_sales_analytics", "check_inventory_status", "find_listing", "list_low_stock", "get_top_products", "get_review_summary"})
 
 
 def server_connection(settings: Settings) -> dict:

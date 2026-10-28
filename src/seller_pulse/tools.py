@@ -22,6 +22,7 @@ from pydantic import Field
 from seller_pulse.config import Settings
 from seller_pulse.inventory import check_inventory_status, find_listing, list_low_stock
 from seller_pulse.memory import PreferenceKey, PreferenceStore
+from seller_pulse.reviews import MAX_REVIEW_ITEMS, get_review_summary
 from seller_pulse.sales import MAX_TOP_PRODUCTS, PERIOD_GRAMMAR, get_sales_analytics, get_top_products
 
 SALES_DESCRIPTION = (
@@ -73,6 +74,25 @@ LOW_STOCK_DESCRIPTION = (
     "Every listing in the seller's catalog at or below a stock level, lowest first, with SKU, "
     "title, current quantity and status. Use this for any question about which products are low "
     "or out of stock — never check SKUs one by one."
+)
+
+REVIEW_SUMMARY_DESCRIPTION = (
+    "Review count, average rating and lowest rating per product, for the whole catalog or "
+    "filtered: products with no reviews, with at least one review of a given star rating, or "
+    "averaging at or below a rating. Lowest average first, unreviewed products last. Use this "
+    "for any question about which products have no reviews, have 1-star (or any N-star) "
+    "reviews, or are worst rated — it returns counts and ratings, not review text."
+)
+
+HAS_REVIEWS_DESCRIPTION = "false: only products with no reviews. true: only products with at least one. Omit for both."
+
+REVIEW_RATING_DESCRIPTION = "Only products with at least one review of exactly this many stars, 1 to 5."
+
+MAX_AVG_RATING_DESCRIPTION = "Only reviewed products whose average rating is at or below this, 1 to 5."
+
+REVIEW_LIMIT_DESCRIPTION = (
+    f"How many products to return, 1 to {MAX_REVIEW_ITEMS}. Default 20; use {MAX_REVIEW_ITEMS} "
+    "when the seller wants every match listed."
 )
 
 THRESHOLD_DESCRIPTION = "Units at or below which a listing counts as low, a whole number, 0 or more."
@@ -128,6 +148,14 @@ def build_tools(settings: Settings) -> list[BaseTool]:
     ) -> dict:
         return get_top_products(seller_id, period, metric, limit, group_by)
 
+    def review_summary(
+        has_reviews: Annotated[bool | None, Field(description=HAS_REVIEWS_DESCRIPTION)] = None,
+        rating: Annotated[int | None, Field(description=REVIEW_RATING_DESCRIPTION)] = None,
+        max_avg_rating: Annotated[float | None, Field(description=MAX_AVG_RATING_DESCRIPTION)] = None,
+        limit: Annotated[int, Field(description=REVIEW_LIMIT_DESCRIPTION)] = 20,
+    ) -> dict:
+        return get_review_summary(seller_id, has_reviews, rating, max_avg_rating, limit)
+
     return [
         StructuredTool.from_function(
             func=sales, name="get_sales_analytics", description=SALES_DESCRIPTION
@@ -143,6 +171,9 @@ def build_tools(settings: Settings) -> list[BaseTool]:
         ),
         StructuredTool.from_function(
             func=top_products, name="get_top_products", description=TOP_PRODUCTS_DESCRIPTION
+        ),
+        StructuredTool.from_function(
+            func=review_summary, name="get_review_summary", description=REVIEW_SUMMARY_DESCRIPTION
         ),
     ]
 

@@ -60,6 +60,11 @@ def get_listing(sku: str) -> Listing | None:
     return _LISTINGS.get(sku)
 
 
+def listings_for(seller_id: str) -> list[Listing]:
+    """The seller's listings, in catalog order. Another seller's listing never appears."""
+    return [l for l in _LISTINGS.values() if l.seller_id == seller_id]
+
+
 def catalog_size() -> int:
     """Return the number of SKUs in the catalog.
 

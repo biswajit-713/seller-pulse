@@ -23,7 +23,7 @@ def _tools(settings=SETTINGS):
 
 
 def test_tool_names():
-    assert [t.name for t in build_tools(SETTINGS)] == ["get_sales_analytics", "check_inventory_status", "find_listing", "list_low_stock", "get_top_products"]
+    assert [t.name for t in build_tools(SETTINGS)] == ["get_sales_analytics", "check_inventory_status", "find_listing", "list_low_stock", "get_top_products", "get_review_summary"]
 
 
 @pytest.mark.parametrize("name, args", [("get_sales_analytics", ["period", "sku"]), ("check_inventory_status", ["sku"])])

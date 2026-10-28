@@ -22,16 +22,22 @@ from pydantic import Field
 
 from seller_pulse.config import Settings, load_settings
 from seller_pulse.inventory import check_inventory_status, find_listing, list_low_stock
+from seller_pulse.reviews import get_review_summary
 from seller_pulse.sales import get_sales_analytics, get_top_products
 from seller_pulse.tools import (
     FIND_LISTING_DESCRIPTION,
     INVENTORY_DESCRIPTION,
     GROUP_BY_DESCRIPTION,
+    HAS_REVIEWS_DESCRIPTION,
     LIMIT_DESCRIPTION,
     LISTING_NAME_DESCRIPTION,
     LOW_STOCK_DESCRIPTION,
+    MAX_AVG_RATING_DESCRIPTION,
     METRIC_DESCRIPTION,
     PERIOD_DESCRIPTION,
+    REVIEW_LIMIT_DESCRIPTION,
+    REVIEW_RATING_DESCRIPTION,
+    REVIEW_SUMMARY_DESCRIPTION,
     SALES_DESCRIPTION,
     SALES_SKU_DESCRIPTION,
     SKU_DESCRIPTION,
@@ -72,6 +78,15 @@ def build_server(settings: Settings) -> FastMCP:
         group_by: Annotated[str, Field(description=GROUP_BY_DESCRIPTION)] = "sku",
     ) -> dict:
         return get_top_products(seller_id, period, metric, limit, group_by)
+
+    @server.tool(name="get_review_summary", description=REVIEW_SUMMARY_DESCRIPTION)
+    def review_summary(
+        has_reviews: Annotated[bool | None, Field(description=HAS_REVIEWS_DESCRIPTION)] = None,
+        rating: Annotated[int | None, Field(description=REVIEW_RATING_DESCRIPTION)] = None,
+        max_avg_rating: Annotated[float | None, Field(description=MAX_AVG_RATING_DESCRIPTION)] = None,
+        limit: Annotated[int, Field(description=REVIEW_LIMIT_DESCRIPTION)] = 20,
+    ) -> dict:
+        return get_review_summary(seller_id, has_reviews, rating, max_avg_rating, limit)
 
     return server
 

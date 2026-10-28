@@ -46,6 +46,7 @@ ALL_ROUTES = frozenset(Route)
 # route names is never bound.
 ROUTE_TOOLS: dict[Route, frozenset[str]] = {
     Route.DATA: frozenset({"get_sales_analytics", "check_inventory_status", "find_listing", "list_low_stock", "get_top_products"}),
+    Route.REVIEWS: frozenset({"get_review_summary"}),
     Route.MEMORY: frozenset({"save_preference", "list_preferences"}),
 }
 
