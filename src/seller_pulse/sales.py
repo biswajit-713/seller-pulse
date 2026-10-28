@@ -209,6 +209,8 @@ def get_sales_analytics(
 
 
 TOP_PRODUCT_METRICS = ("revenue", "units")
+TOP_PRODUCT_GROUPS = ("sku", "category")
+UNCATEGORISED = "Uncategorised"
 MAX_TOP_PRODUCTS = 20
 
 
@@ -217,17 +219,22 @@ def get_top_products(
     period: str,
     metric: str = "revenue",
     limit: int = 5,
+    group_by: str = "sku",
     *,
     today: date | None = None,
 ) -> dict:
-    """The seller's best-selling SKUs for one window, ranked by `metric`. Never raises.
+    """The seller's best sellers for one window, ranked by `metric`. Never raises.
 
-    Ties break on SKU so the order is stable. The window fields mirror `get_sales_analytics`
+    `group_by` is `sku` (one item per listing) or `category` (listings summed per category).
+    Ties break on the SKU or category name so the order is stable. The window fields mirror `get_sales_analytics`
     (`days_with_data`, `period_complete`, `data_end`) so the same caveats apply.
     """
     metric = metric.strip().lower()
     if metric not in TOP_PRODUCT_METRICS:
         return _error("INVALID_METRIC", f"'{metric}' is not a metric. Accepted: {' | '.join(TOP_PRODUCT_METRICS)}.")
+    group_by = group_by.strip().lower()
+    if group_by not in TOP_PRODUCT_GROUPS:
+        return _error("INVALID_GROUP_BY", f"'{group_by}' is not a grouping. Accepted: {' | '.join(TOP_PRODUCT_GROUPS)}.")
     if not 1 <= limit <= MAX_TOP_PRODUCTS:
         return _error("INVALID_LIMIT", f"{limit} is not a usable limit. Give a whole number from 1 to {MAX_TOP_PRODUCTS}.")
     today = today or date.fromisoformat(TODAY)
@@ -245,25 +252,24 @@ def get_top_products(
         last = max(r.date for r in rows).isoformat()
         return _error("NO_DATA_FOR_PERIOD", f"No sales data for {window}. The last date with sales data is {last}.")
 
-    per_sku: dict[str, dict] = {}
+    per_key: dict[str, dict] = {}
     for r in in_window:
-        agg = per_sku.setdefault(r.sku, {"units_sold": 0, "revenue_usd": 0.0})
+        listing = get_listing(r.sku)
+        key_name = r.sku if group_by == "sku" else (listing.category if listing else UNCATEGORISED)
+        agg = per_key.setdefault(key_name, {"units_sold": 0, "revenue_usd": 0.0})
         agg["units_sold"] += r.units_sold
         agg["revenue_usd"] += r.revenue_usd
     key = "revenue_usd" if metric == "revenue" else "units_sold"
-    ranked = sorted(per_sku.items(), key=lambda kv: (-kv[1][key], kv[0]))
+    ranked = sorted(per_key.items(), key=lambda kv: (-kv[1][key], kv[0]))
     data_end = max(r.date for r in rows)
     items = []
-    for sku, agg in ranked[:limit]:
-        listing = get_listing(sku)
-        items.append(
-            {
-                "sku": sku,
-                "title": listing.title if listing else None,
-                "units_sold": agg["units_sold"],
-                "revenue_usd": round(agg["revenue_usd"], 2),
-            }
-        )
+    for name, agg in ranked[:limit]:
+        if group_by == "sku":
+            listing = get_listing(name)
+            label = {"sku": name, "title": listing.title if listing else None}
+        else:
+            label = {"category": name}
+        items.append({**label, "units_sold": agg["units_sold"], "revenue_usd": round(agg["revenue_usd"], 2)})
     return {
         "ok": True,
         "data": {
@@ -271,9 +277,10 @@ def get_top_products(
             "start": start.isoformat(),
             "end": end.isoformat(),
             "metric": metric,
-            "count": len(per_sku),
+            "group_by": group_by,
+            "count": len(per_key),
             "items": items,
-            "truncated": len(per_sku) > limit,
+            "truncated": len(per_key) > limit,
             "days_in_window": (end - start).days + 1,
             "days_with_data": len({r.date for r in in_window}),
             "period_complete": end < data_end,

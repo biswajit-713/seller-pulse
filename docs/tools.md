@@ -312,18 +312,22 @@ returned, so a typo still resolves. `data` is `{"matches": [{"sku", "title", "st
 with at most 3 matches; several matches are for the agent to put to the seller. Synonyms and word
 reordering do not match (that is the RAG listings option, `plan/rag-05-listings-domain.md`).
 
-### `get_top_products(period: str, metric: str = "revenue", limit: int = 5)`
+### `get_top_products(period: str, metric: str = "revenue", limit: int = 5, group_by: str = "sku")`
 
 Catalog-wide ranking, so "what's my best-seller?" is one call instead of one `get_sales_analytics`
-per SKU. `period` uses the §3 grammar; `metric` is `revenue` (default) or `units`; `limit` is 1–20.
-`data` is `{"period", "start", "end", "metric", "count", "items": [{"sku", "title", "units_sold",
-"revenue_usd"}], "truncated", "days_in_window", "days_with_data", "period_complete", "data_end"}`:
-the seller's SKUs with sales in the window, best first (ties by SKU), `items` capped at `limit`
-(`count` is every SKU with sales). The window fields mean what they do in §3, so the same
+per SKU. `period` uses the §3 grammar; `metric` is `revenue` (default) or `units`; `limit` is 1–20;
+`group_by` is `sku` (default) or `category`. `data` is `{"period", "start", "end", "metric",
+"group_by", "count", "items": [{"sku", "title", "units_sold", "revenue_usd"}], "truncated",
+"days_in_window", "days_with_data", "period_complete", "data_end"}`: the seller's SKUs with sales in
+the window, best first (ties by SKU), `items` capped at `limit` (`count` is every SKU with sales).
+With `group_by="category"` each item is `{"category", "units_sold", "revenue_usd"}` instead — the
+listings' sales summed per `listings.csv` category (a SKU with no listing falls under
+`Uncategorised`), ties by category name, and `count` is every category with sales. The agent uses
+it with `limit` 20 for "which category" questions so no category is cut off. The window fields mean what they do in §3, so the same
 partial-period and `days_with_data` caveats apply. With no period or metric from the seller, the
 agent uses `last_30_days` and `revenue` and says so. Cached like `get_sales_analytics`.
 
-Errors: `INVALID_PERIOD` and `NO_DATA_FOR_PERIOD` as §3; `INVALID_METRIC` and `INVALID_LIMIT` per §5.
+Errors: `INVALID_PERIOD` and `NO_DATA_FOR_PERIOD` as §3; `INVALID_METRIC`, `INVALID_LIMIT` and `INVALID_GROUP_BY` per §5.
 
 ### `list_low_stock(threshold: int)`
 
@@ -345,6 +349,7 @@ Active-at-0 listings (SKU-1013, SKU-1020) come back as-is. The agent passes the 
 | `UNKNOWN_LISTING` | `find_listing` | No title in the seller's catalog matches the name, even fuzzily | Say no listing matched; ask for more of the name or the SKU. |
 | `INVALID_METRIC` | `get_top_products` | The metric is not `revenue` or `units` | Rank by revenue or units; say which. |
 | `INVALID_LIMIT` | `get_top_products` | The limit is outside 1–20 | Use a count from 1 to 20. |
+| `INVALID_GROUP_BY` | `get_top_products` | The grouping is not `sku` or `category` | Group by product or by category; say which. |
 | `INVALID_THRESHOLD` | `list_low_stock` | The threshold is negative | Ask for a stock level of 0 or more. |
 | `UNKNOWN_SKU` | `check_inventory_status`, `get_sales_analytics` | The SKU is well-formed but not in the seller's catalog | Say that SKU isn't in their catalog and ask them to check the code. Don't invent stock figures. |
 | `TIMEOUT` | either | The tool didn't return in time. Not emitted by the in-process tools today; the agent eval injects it (`evals/faults.py`, AE-19/AE-20) ahead of the MCP transport, where it can really happen | Say the check failed and give no figure for what was asked. Sales are dated per row, so a separate, successful call for the last day with data may be reported, dated. Stock has no as-of date, so there is no stock fallback. No code-specific prompt rule yet: the general `ok: false` rule covers it. |

@@ -40,7 +40,17 @@ def test_window_fields_match_sales_analytics():
     assert data["data_end"] == "2026-09-25" and data["period_complete"] is False
 
 
+def test_groups_by_category():
+    data = get_top_products(SELLER, "2026-08-03..2026-09-25", limit=MAX_TOP_PRODUCTS, group_by="category")["data"]
+    assert data["group_by"] == "category" and not data["truncated"]
+    assert [i["category"] for i in data["items"]][:2] == ["Lighting", "Rugs"]
+    assert data["items"][0]["revenue_usd"] == 68326.53 and data["items"][0]["units_sold"] == 959
+    assert round(sum(i["revenue_usd"] for i in data["items"]), 2) == 331025.38
+    assert "sku" not in data["items"][0]
+
+
 def test_errors():
+    assert get_top_products(SELLER, "last_week", group_by="region")["error"]["code"] == "INVALID_GROUP_BY"
     assert get_top_products(SELLER, "last_week", "profit")["error"]["code"] == "INVALID_METRIC"
     assert get_top_products(SELLER, "last_week", limit=0)["error"]["code"] == "INVALID_LIMIT"
     assert get_top_products(SELLER, "last_week", limit=MAX_TOP_PRODUCTS + 1)["error"]["code"] == "INVALID_LIMIT"

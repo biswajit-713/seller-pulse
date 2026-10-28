@@ -26,6 +26,7 @@ from seller_pulse.sales import get_sales_analytics, get_top_products
 from seller_pulse.tools import (
     FIND_LISTING_DESCRIPTION,
     INVENTORY_DESCRIPTION,
+    GROUP_BY_DESCRIPTION,
     LIMIT_DESCRIPTION,
     LISTING_NAME_DESCRIPTION,
     LOW_STOCK_DESCRIPTION,
@@ -68,8 +69,9 @@ def build_server(settings: Settings) -> FastMCP:
         period: Annotated[str, Field(description=PERIOD_DESCRIPTION)],
         metric: Annotated[str, Field(description=METRIC_DESCRIPTION)] = "revenue",
         limit: Annotated[int, Field(description=LIMIT_DESCRIPTION)] = 5,
+        group_by: Annotated[str, Field(description=GROUP_BY_DESCRIPTION)] = "sku",
     ) -> dict:
-        return get_top_products(seller_id, period, metric, limit)
+        return get_top_products(seller_id, period, metric, limit, group_by)
 
     return server
 

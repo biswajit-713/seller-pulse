@@ -45,6 +45,14 @@ def test_top_products_partial_period():
     )
 
 
+def test_top_categories_render():
+    args = {"period": "2026-08-03..2026-09-25", "limit": 2, "group_by": "category"}
+    text = _render("get_top_products", args, get_top_products(SELLER, **args, today=TODAY))
+    assert "**Top categories by revenue" in text
+    assert "1. Lighting: 959 units, $68,326.53" in text
+    assert "10 categories had sales" in text
+
+
 def test_same_result_renders_identically():
     args = {"period": "last_30_days", "metric": "units", "limit": 3}
     result = get_top_products(SELLER, **args, today=TODAY)

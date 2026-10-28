@@ -58,18 +58,20 @@ def _join(*blocks: str | None) -> str:
 
 def _top_products(data: dict, _preferences: list[Preference]) -> str:
     items = data["items"]
+    by_category = data["group_by"] == "category"
     lines = [
-        f"{i}. {item['sku']} — {item['title']}: {item['units_sold']} units, "
-        f"{_money(item['revenue_usd'])}"
+        f"{i}. {item['category'] if by_category else item['sku'] + ' — ' + str(item['title'])}: "
+        f"{item['units_sold']} units, {_money(item['revenue_usd'])}"
         for i, item in enumerate(items, 1)
     ]
+    noun = "categories" if by_category else "products"
     shown = (
-        f"Showing the top results only; {data['count']} products had sales in this window."
+        f"Showing the top results only; {data['count']} {noun} had sales in this window."
         if data["truncated"]
         else None
     )
     return _join(
-        f"**Top products by {data['metric']}, {_window(data)}**",
+        f"**Top {noun} by {data['metric']}, {_window(data)}**",
         "\n".join(lines),
         shown,
         _coverage_note(data),

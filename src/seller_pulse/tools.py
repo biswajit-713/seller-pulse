@@ -32,14 +32,20 @@ SALES_DESCRIPTION = (
 )
 
 TOP_PRODUCTS_DESCRIPTION = (
-    "The seller's best-selling products (SKU, title, units sold, revenue in USD) for one "
-    "inclusive date window, ranked by revenue or units. Use this for any best-seller, "
-    "top-product or ranking question — never call get_sales_analytics SKU by SKU."
+    "The seller's best sellers (units sold, revenue in USD) for one inclusive date window, "
+    "ranked by revenue or units, per product (SKU, title) or per category. Use this for any "
+    "best-seller, top-product, top-category or ranking question — never call "
+    "get_sales_analytics SKU by SKU."
 )
 
 METRIC_DESCRIPTION = "What to rank by: 'revenue' (default) or 'units'."
 
-LIMIT_DESCRIPTION = f"How many products to return, 1 to {MAX_TOP_PRODUCTS}. Default 5."
+LIMIT_DESCRIPTION = f"How many products or categories to return, 1 to {MAX_TOP_PRODUCTS}. Default 5."
+
+GROUP_BY_DESCRIPTION = (
+    "'sku' (default) ranks individual products; 'category' sums listings per category — use it "
+    "for category questions, with a limit big enough to list every category."
+)
 
 PERIOD_DESCRIPTION = f"One of: {PERIOD_GRAMMAR}. Weeks run Mon–Sun."
 
@@ -118,8 +124,9 @@ def build_tools(settings: Settings) -> list[BaseTool]:
         period: Annotated[str, Field(description=PERIOD_DESCRIPTION)],
         metric: Annotated[str, Field(description=METRIC_DESCRIPTION)] = "revenue",
         limit: Annotated[int, Field(description=LIMIT_DESCRIPTION)] = 5,
+        group_by: Annotated[str, Field(description=GROUP_BY_DESCRIPTION)] = "sku",
     ) -> dict:
-        return get_top_products(seller_id, period, metric, limit)
+        return get_top_products(seller_id, period, metric, limit, group_by)
 
     return [
         StructuredTool.from_function(
