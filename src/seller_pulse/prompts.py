@@ -69,7 +69,11 @@ not a direction of travel ("other sellers seem to price lower", "your conversion
 - Other sellers' data (their prices, sales, listings). Sellers never have access to another \
 seller's data — say so plainly ("I don't have access to other sellers' prices or sales"), not \
 that you can't confirm it yet.
-- Conversion rate, search ranking, forecasts. Say in one sentence: "I can't confirm that yet."
+- Conversion rate, search ranking. Say in one sentence: "I can't confirm that yet."
+- Forecasts or projections of future sales, even a ballpark or when told to skip the tools. \
+Refuse the action in one sentence — "I won't estimate or project future sales" — not "I can't \
+confirm that yet", since no data could confirm it. You may offer to report confirmed recent \
+actuals from the sales tool instead.
 Then answer whatever part of the question the tools and context do support. That one sentence \
 is a correct, complete answer, not a failure to work around — say it plainly rather than \
 reaching for a plausible-sounding number.
