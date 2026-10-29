@@ -338,17 +338,18 @@ Catalog-wide low-stock list, so "which products are low?" is one call instead of
 Active-at-0 listings (SKU-1013, SKU-1020) come back as-is. The agent passes the saved
 `restock_threshold` preference, else 5, and says which it used. Not cached (like `find_listing`).
 
-### `get_stock_velocity(period, min_stock=0, max_stock=None, order="fastest", limit=10)`
+### `get_stock_velocity(period, min_stock=0, max_stock=None, order="fastest", limit=10, max_units_sold=None)`
 
 Units sold in the window next to stock on hand, per listing whose `stock_qty` lies in
 `min_stock..max_stock` (listings that sold nothing appear with `units_sold` 0). `order` is
 `fastest` (most units sold first: what is about to run out) or `slowest` (fewest first: slow
-movers carrying stock); ties break on SKU. `data`: `period`, `start`, `end`, `order`, `count`,
+movers carrying stock); ties break on SKU. `max_units_sold` keeps only listings that sold at most
+that many units (`0`: nothing sold; with it, `count` is the number of such listings). `data`: `period`, `start`, `end`, `order`, `count`,
 `items` (`sku`, `title`, `units_sold`, `stock_qty`, `status`, `stock_value_usd`),
 `shown_stock_value_usd` (sum over `items` only), `truncated`, plus the window fields of
 `get_top_products`. `stock_value_usd` is `stock_qty * price_usd` — retail value; the data has no
-cost column. Errors: `INVALID_STOCK_RANGE`, `INVALID_ORDER`, `INVALID_LIMIT`, `INVALID_PERIOD`,
-`NO_DATA_FOR_PERIOD`. Serves SQ-23 (`min_stock=1, max_stock=1`) and SQ-26 (`min_stock=20, order=slowest`).
+cost column. Errors: `INVALID_STOCK_RANGE`, `INVALID_MAX_UNITS_SOLD`, `INVALID_ORDER`, `INVALID_LIMIT`, `INVALID_PERIOD`,
+`NO_DATA_FOR_PERIOD`. Serves SQ-23 (`min_stock=1, max_stock=1`) SQ-26 (`min_stock=20, order=slowest`) and SQ-27 (`max_units_sold=0`).
 
 ### `get_review_summary(has_reviews=None, rating=None, max_avg_rating=None, limit=20)`
 

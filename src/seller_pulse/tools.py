@@ -86,13 +86,19 @@ STOCK_VELOCITY_DESCRIPTION = (
     "Units sold in a date window next to stock on hand and its retail value, per product, for "
     "products whose stock lies in a range. Use this for any question joining sales with stock: "
     "what is about to run out and how fast it sells (reminders, restock urgency), or slow "
-    "sellers carrying stock (what to stop restocking, overstock) — never call "
+    "sellers carrying stock (what to stop restocking, overstock), or listings that sold nothing "
+    "(max_units_sold 0) — never call "
     "get_sales_analytics or check_inventory_status SKU by SKU."
 )
 
 MIN_STOCK_DESCRIPTION = "Only products with at least this many units on hand. Default 0."
 
 MAX_STOCK_DESCRIPTION = "Only products with at most this many units on hand. Omit for no upper bound."
+
+MAX_UNITS_SOLD_DESCRIPTION = (
+    "Only products that sold at most this many units in the window. 0 = products that sold "
+    "nothing. Omit for no limit."
+)
 
 STOCK_ORDER_DESCRIPTION = (
     "'fastest' (default): most units sold first — urgency for low-stock products. "
@@ -177,8 +183,17 @@ def build_tools(settings: Settings) -> list[BaseTool]:
         max_stock: Annotated[int | None, Field(description=MAX_STOCK_DESCRIPTION)] = None,
         order: Annotated[str, Field(description=STOCK_ORDER_DESCRIPTION)] = "fastest",
         limit: Annotated[int, Field(description=LIMIT_DESCRIPTION)] = 10,
+        max_units_sold: Annotated[int | None, Field(description=MAX_UNITS_SOLD_DESCRIPTION)] = None,
     ) -> dict:
-        return get_stock_velocity(seller_id, period, min_stock, max_stock, order, limit)
+        return get_stock_velocity(
+            seller_id,
+            period,
+            min_stock=min_stock,
+            max_stock=max_stock,
+            order=order,
+            limit=limit,
+            max_units_sold=max_units_sold,
+        )
 
     def review_summary(
         has_reviews: Annotated[bool | None, Field(description=HAS_REVIEWS_DESCRIPTION)] = None,

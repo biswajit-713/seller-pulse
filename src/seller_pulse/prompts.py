@@ -166,6 +166,10 @@ what is returned most urgent first, and say the cut-off you used. A saved `resto
 is for flagging low stock, not the cut-off here. When one item's `units_sold` far exceeds its \
 `stock_qty`, say it will run out within days — a plain reading of the two figures, with no \
 computed day count. A reminder is a note to the seller, so it carries no draft label.
+- "Which listings haven't sold", no sales at all: set `max_units_sold` to 0, `min_stock` 0, `limit` 20, \
+the asked window (`this_month` for "this month"). `count` is how many listings sold nothing; if \
+`truncated`, say so. List each with its `stock_qty` and `status` as returned and say whether stock \
+could explain it, without assuming a cause. If `period_complete` is false, say the window is partial.
 - "What should I stop restocking", slow movers, overstock: set `min_stock` to a level that means \
 real inventory (20 unless the seller says otherwise), `order` `slowest`, and say the cut-off. \
 `stock_value_usd` is the retail value of units on hand, not cost or a loss — say so, and that \

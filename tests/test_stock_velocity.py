@@ -35,3 +35,14 @@ def test_validation_and_tenancy():
     assert get_stock_velocity(SELLER, WINDOW, limit=0)["error"]["code"] == "INVALID_LIMIT"
     assert get_stock_velocity(SELLER, "nonsense")["error"]["code"] == "INVALID_PERIOD"
     assert get_stock_velocity("SELLER-999", WINDOW)["error"]["code"] == "NO_DATA_FOR_PERIOD"
+
+
+def test_max_units_sold_zero_returns_only_unsold():
+    data = get_stock_velocity(SELLER, "2026-09-01..2026-09-25", max_units_sold=0, limit=MAX_TOP_PRODUCTS)["data"]
+    assert data["count"] == 4 and data["truncated"] is False
+    assert sorted(i["sku"] for i in data["items"]) == ["SKU-1040", "SKU-1050", "SKU-1095", "SKU-1120"]
+    assert all(i["units_sold"] == 0 for i in data["items"])
+
+
+def test_negative_max_units_sold_rejected():
+    assert get_stock_velocity(SELLER, WINDOW, max_units_sold=-1)["error"]["code"] == "INVALID_MAX_UNITS_SOLD"

@@ -295,17 +295,19 @@ STOCK_VELOCITY_ORDERS = ("fastest", "slowest")
 def get_stock_velocity(
     seller_id: str,
     period: str,
+    *,
     min_stock: int = 0,
     max_stock: int | None = None,
     order: str = "fastest",
     limit: int = 10,
-    *,
+    max_units_sold: int | None = None,
     today: date | None = None,
 ) -> dict:
     """Units sold in one window against stock on hand, per listing. Never raises.
 
     Joins `sales.csv` to the listings: every listing of the seller whose `stock_qty` lies in
     `min_stock..max_stock` appears, with 0 `units_sold` if it sold nothing in the window.
+    `max_units_sold` keeps only listings that sold at most that many units (0: nothing sold).
     `order` is `fastest` (most units sold first, for what is about to run out) or `slowest`
     (fewest first, for what is tying up stock). Ties break on SKU, so the order is stable.
     `stock_value_usd` is `stock_qty * price_usd` — retail value, the data has no cost column.
@@ -313,6 +315,8 @@ def get_stock_velocity(
     """
     if min_stock < 0 or (max_stock is not None and max_stock < min_stock):
         return _error("INVALID_STOCK_RANGE", "Give min_stock 0 or more, and max_stock at or above min_stock.")
+    if max_units_sold is not None and max_units_sold < 0:
+        return _error("INVALID_MAX_UNITS_SOLD", "Give max_units_sold 0 or more.")
     order = order.strip().lower()
     if order not in STOCK_VELOCITY_ORDERS:
         return _error("INVALID_ORDER", f"'{order}' is not an order. Accepted: {' | '.join(STOCK_VELOCITY_ORDERS)}.")
@@ -338,7 +342,9 @@ def get_stock_velocity(
         units[r.sku] = units.get(r.sku, 0) + r.units_sold
     matches = [
         l for l in listings_for(seller_id)
-        if l.stock_qty >= min_stock and (max_stock is None or l.stock_qty <= max_stock)
+        if l.stock_qty >= min_stock
+        and (max_stock is None or l.stock_qty <= max_stock)
+        and (max_units_sold is None or units.get(l.sku, 0) <= max_units_sold)
     ]
     sign = -1 if order == "fastest" else 1
     matches.sort(key=lambda l: (sign * units.get(l.sku, 0), l.sku))

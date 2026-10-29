@@ -34,6 +34,7 @@ from seller_pulse.tools import (
     LOW_STOCK_DESCRIPTION,
     MAX_AVG_RATING_DESCRIPTION,
     MAX_STOCK_DESCRIPTION,
+    MAX_UNITS_SOLD_DESCRIPTION,
     METRIC_DESCRIPTION,
     MIN_STOCK_DESCRIPTION,
     PERIOD_DESCRIPTION,
@@ -90,8 +91,17 @@ def build_server(settings: Settings) -> FastMCP:
         max_stock: Annotated[int | None, Field(description=MAX_STOCK_DESCRIPTION)] = None,
         order: Annotated[str, Field(description=STOCK_ORDER_DESCRIPTION)] = "fastest",
         limit: Annotated[int, Field(description=LIMIT_DESCRIPTION)] = 10,
+        max_units_sold: Annotated[int | None, Field(description=MAX_UNITS_SOLD_DESCRIPTION)] = None,
     ) -> dict:
-        return get_stock_velocity(seller_id, period, min_stock, max_stock, order, limit)
+        return get_stock_velocity(
+            seller_id,
+            period,
+            min_stock=min_stock,
+            max_stock=max_stock,
+            order=order,
+            limit=limit,
+            max_units_sold=max_units_sold,
+        )
 
     @server.tool(name="get_review_summary", description=REVIEW_SUMMARY_DESCRIPTION)
     def review_summary(
