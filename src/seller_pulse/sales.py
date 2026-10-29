@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 
 from seller_pulse.config import DEFAULT_SALES_PATH
-from seller_pulse.inventory import SKU_PATTERN, get_listing, normalise_sku
+from seller_pulse.inventory import SKU_PATTERN, get_listing, listings_for, normalise_sku
 from seller_pulse.prompts import TODAY
 
 
@@ -281,6 +281,90 @@ def get_top_products(
             "count": len(per_key),
             "items": items,
             "truncated": len(per_key) > limit,
+            "days_in_window": (end - start).days + 1,
+            "days_with_data": len({r.date for r in in_window}),
+            "period_complete": end < data_end,
+            "data_end": data_end.isoformat(),
+        },
+    }
+
+
+STOCK_VELOCITY_ORDERS = ("fastest", "slowest")
+
+
+def get_stock_velocity(
+    seller_id: str,
+    period: str,
+    min_stock: int = 0,
+    max_stock: int | None = None,
+    order: str = "fastest",
+    limit: int = 10,
+    *,
+    today: date | None = None,
+) -> dict:
+    """Units sold in one window against stock on hand, per listing. Never raises.
+
+    Joins `sales.csv` to the listings: every listing of the seller whose `stock_qty` lies in
+    `min_stock..max_stock` appears, with 0 `units_sold` if it sold nothing in the window.
+    `order` is `fastest` (most units sold first, for what is about to run out) or `slowest`
+    (fewest first, for what is tying up stock). Ties break on SKU, so the order is stable.
+    `stock_value_usd` is `stock_qty * price_usd` — retail value, the data has no cost column.
+    `shown_stock_value_usd` sums the returned items only.
+    """
+    if min_stock < 0 or (max_stock is not None and max_stock < min_stock):
+        return _error("INVALID_STOCK_RANGE", "Give min_stock 0 or more, and max_stock at or above min_stock.")
+    order = order.strip().lower()
+    if order not in STOCK_VELOCITY_ORDERS:
+        return _error("INVALID_ORDER", f"'{order}' is not an order. Accepted: {' | '.join(STOCK_VELOCITY_ORDERS)}.")
+    if not 1 <= limit <= MAX_TOP_PRODUCTS:
+        return _error("INVALID_LIMIT", f"{limit} is not a usable limit. Give a whole number from 1 to {MAX_TOP_PRODUCTS}.")
+    today = today or date.fromisoformat(TODAY)
+    try:
+        start, end = resolve_period(period, today)
+    except PeriodError as e:
+        return _error("INVALID_PERIOD", str(e))
+
+    rows = [r for r in _SALES if r.seller_id == seller_id]
+    in_window = [r for r in rows if start <= r.date <= end]
+    if not in_window:
+        window = f"{start.isoformat()}..{end.isoformat()}"
+        if not rows:
+            return _error("NO_DATA_FOR_PERIOD", f"No sales data for {window}. This seller has no sales data recorded.")
+        last = max(r.date for r in rows).isoformat()
+        return _error("NO_DATA_FOR_PERIOD", f"No sales data for {window}. The last date with sales data is {last}.")
+
+    units: dict[str, int] = {}
+    for r in in_window:
+        units[r.sku] = units.get(r.sku, 0) + r.units_sold
+    matches = [
+        l for l in listings_for(seller_id)
+        if l.stock_qty >= min_stock and (max_stock is None or l.stock_qty <= max_stock)
+    ]
+    sign = -1 if order == "fastest" else 1
+    matches.sort(key=lambda l: (sign * units.get(l.sku, 0), l.sku))
+    items = [
+        {
+            "sku": l.sku,
+            "title": l.title,
+            "units_sold": units.get(l.sku, 0),
+            "stock_qty": l.stock_qty,
+            "status": l.status,
+            "stock_value_usd": round(l.stock_qty * l.price_usd, 2),
+        }
+        for l in matches[:limit]
+    ]
+    data_end = max(r.date for r in rows)
+    return {
+        "ok": True,
+        "data": {
+            "period": normalise_period(period),
+            "start": start.isoformat(),
+            "end": end.isoformat(),
+            "order": order,
+            "count": len(matches),
+            "items": items,
+            "shown_stock_value_usd": round(sum(i["stock_value_usd"] for i in items), 2),
+            "truncated": len(matches) > limit,
             "days_in_window": (end - start).days + 1,
             "days_with_data": len({r.date for r in in_window}),
             "period_complete": end < data_end,

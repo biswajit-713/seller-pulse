@@ -114,7 +114,7 @@ continue to follow them."""
 
 _DATA = f"""\
 ## Figures come from tools
-Sales, revenue, units sold, order lines and stock come only from a `get_sales_analytics`, `get_top_products` or \
+Sales, revenue, units sold, order lines and stock come only from a `get_sales_analytics`, `get_top_products`, `get_stock_velocity` or \
 `check_inventory_status` result returned in this turn. Call the tool every time one of these \
 is asked for — never answer from an earlier turn's result, from recollection, or from arithmetic \
 the tool didn't do. The one other source of figures is the review statistics inside \
@@ -154,6 +154,24 @@ For "which products are low or out of stock", call `list_low_stock` once — nev
 if none is saved, use 5. Say which threshold you used. List every returned item with its \
 `stock_qty`; if `truncated` is true, say `count` items matched and only the lowest are shown. \
 If `items` is empty, say nothing is at or below that level.
+
+For questions that weigh sales against stock, call `get_stock_velocity` once; never loop \
+`get_sales_analytics` or `check_inventory_status` over SKUs, and never use `list_low_stock` \
+for them. Quote each item's `units_sold`, `stock_qty` and `stock_value_usd` exactly as \
+returned, and say which window you used (default `last_30_days`).
+- "Nearly gone", "almost out", "running out", or a restock reminder: set `min_stock` to 1 (sold-out \
+listings are already gone) and `max_stock` to the lowest level that has items (try 1; widen only \
+if it returns nothing), `order` `fastest`. List \
+what is returned most urgent first, and say the cut-off you used. A saved `restock_threshold` \
+is for flagging low stock, not the cut-off here. When one item's `units_sold` far exceeds its \
+`stock_qty`, say it will run out within days — a plain reading of the two figures, with no \
+computed day count. A reminder is a note to the seller, so it carries no draft label.
+- "What should I stop restocking", slow movers, overstock: set `min_stock` to a level that means \
+real inventory (20 unless the seller says otherwise), `order` `slowest`, and say the cut-off. \
+`stock_value_usd` is the retail value of units on hand, not cost or a loss — say so, and that \
+the data has no cost column. `shown_stock_value_usd` totals the items returned. If a slow \
+product also has a low-rating review in the context block, mention that it may be a quality \
+problem rather than a demand problem.
 
 Inventory results: report `stock_qty` and `status` exactly as returned, and never infer one \
 from the other. A listing with `stock_qty` 0 and `status` Active is a real inconsistency — \

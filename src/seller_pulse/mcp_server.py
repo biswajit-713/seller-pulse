@@ -23,7 +23,7 @@ from pydantic import Field
 from seller_pulse.config import Settings, load_settings
 from seller_pulse.inventory import check_inventory_status, find_listing, list_low_stock
 from seller_pulse.reviews import get_review_summary
-from seller_pulse.sales import get_sales_analytics, get_top_products
+from seller_pulse.sales import get_sales_analytics, get_stock_velocity, get_top_products
 from seller_pulse.tools import (
     FIND_LISTING_DESCRIPTION,
     INVENTORY_DESCRIPTION,
@@ -33,7 +33,9 @@ from seller_pulse.tools import (
     LISTING_NAME_DESCRIPTION,
     LOW_STOCK_DESCRIPTION,
     MAX_AVG_RATING_DESCRIPTION,
+    MAX_STOCK_DESCRIPTION,
     METRIC_DESCRIPTION,
+    MIN_STOCK_DESCRIPTION,
     PERIOD_DESCRIPTION,
     REVIEW_LIMIT_DESCRIPTION,
     REVIEW_RATING_DESCRIPTION,
@@ -41,6 +43,8 @@ from seller_pulse.tools import (
     SALES_DESCRIPTION,
     SALES_SKU_DESCRIPTION,
     SKU_DESCRIPTION,
+    STOCK_ORDER_DESCRIPTION,
+    STOCK_VELOCITY_DESCRIPTION,
     THRESHOLD_DESCRIPTION,
     TOP_PRODUCTS_DESCRIPTION,
 )
@@ -78,6 +82,16 @@ def build_server(settings: Settings) -> FastMCP:
         group_by: Annotated[str, Field(description=GROUP_BY_DESCRIPTION)] = "sku",
     ) -> dict:
         return get_top_products(seller_id, period, metric, limit, group_by)
+
+    @server.tool(name="get_stock_velocity", description=STOCK_VELOCITY_DESCRIPTION)
+    def stock_velocity(
+        period: Annotated[str, Field(description=PERIOD_DESCRIPTION)],
+        min_stock: Annotated[int, Field(description=MIN_STOCK_DESCRIPTION)] = 0,
+        max_stock: Annotated[int | None, Field(description=MAX_STOCK_DESCRIPTION)] = None,
+        order: Annotated[str, Field(description=STOCK_ORDER_DESCRIPTION)] = "fastest",
+        limit: Annotated[int, Field(description=LIMIT_DESCRIPTION)] = 10,
+    ) -> dict:
+        return get_stock_velocity(seller_id, period, min_stock, max_stock, order, limit)
 
     @server.tool(name="get_review_summary", description=REVIEW_SUMMARY_DESCRIPTION)
     def review_summary(

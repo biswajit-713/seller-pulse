@@ -23,7 +23,13 @@ from seller_pulse.config import Settings
 from seller_pulse.inventory import check_inventory_status, find_listing, list_low_stock
 from seller_pulse.memory import PreferenceKey, PreferenceStore
 from seller_pulse.reviews import MAX_REVIEW_ITEMS, get_review_summary
-from seller_pulse.sales import MAX_TOP_PRODUCTS, PERIOD_GRAMMAR, get_sales_analytics, get_top_products
+from seller_pulse.sales import (
+    MAX_TOP_PRODUCTS,
+    PERIOD_GRAMMAR,
+    get_sales_analytics,
+    get_stock_velocity,
+    get_top_products,
+)
 
 SALES_DESCRIPTION = (
     "Revenue (USD), units sold and order lines for one inclusive date window, plus the "
@@ -74,6 +80,23 @@ LOW_STOCK_DESCRIPTION = (
     "Every listing in the seller's catalog at or below a stock level, lowest first, with SKU, "
     "title, current quantity and status. Use this for any question about which products are low "
     "or out of stock — never check SKUs one by one."
+)
+
+STOCK_VELOCITY_DESCRIPTION = (
+    "Units sold in a date window next to stock on hand and its retail value, per product, for "
+    "products whose stock lies in a range. Use this for any question joining sales with stock: "
+    "what is about to run out and how fast it sells (reminders, restock urgency), or slow "
+    "sellers carrying stock (what to stop restocking, overstock) — never call "
+    "get_sales_analytics or check_inventory_status SKU by SKU."
+)
+
+MIN_STOCK_DESCRIPTION = "Only products with at least this many units on hand. Default 0."
+
+MAX_STOCK_DESCRIPTION = "Only products with at most this many units on hand. Omit for no upper bound."
+
+STOCK_ORDER_DESCRIPTION = (
+    "'fastest' (default): most units sold first — urgency for low-stock products. "
+    "'slowest': fewest units sold first — slow movers carrying stock."
 )
 
 REVIEW_SUMMARY_DESCRIPTION = (
@@ -148,6 +171,15 @@ def build_tools(settings: Settings) -> list[BaseTool]:
     ) -> dict:
         return get_top_products(seller_id, period, metric, limit, group_by)
 
+    def stock_velocity(
+        period: Annotated[str, Field(description=PERIOD_DESCRIPTION)],
+        min_stock: Annotated[int, Field(description=MIN_STOCK_DESCRIPTION)] = 0,
+        max_stock: Annotated[int | None, Field(description=MAX_STOCK_DESCRIPTION)] = None,
+        order: Annotated[str, Field(description=STOCK_ORDER_DESCRIPTION)] = "fastest",
+        limit: Annotated[int, Field(description=LIMIT_DESCRIPTION)] = 10,
+    ) -> dict:
+        return get_stock_velocity(seller_id, period, min_stock, max_stock, order, limit)
+
     def review_summary(
         has_reviews: Annotated[bool | None, Field(description=HAS_REVIEWS_DESCRIPTION)] = None,
         rating: Annotated[int | None, Field(description=REVIEW_RATING_DESCRIPTION)] = None,
@@ -171,6 +203,9 @@ def build_tools(settings: Settings) -> list[BaseTool]:
         ),
         StructuredTool.from_function(
             func=top_products, name="get_top_products", description=TOP_PRODUCTS_DESCRIPTION
+        ),
+        StructuredTool.from_function(
+            func=stock_velocity, name="get_stock_velocity", description=STOCK_VELOCITY_DESCRIPTION
         ),
         StructuredTool.from_function(
             func=review_summary, name="get_review_summary", description=REVIEW_SUMMARY_DESCRIPTION
