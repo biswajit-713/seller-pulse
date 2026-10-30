@@ -131,3 +131,50 @@ async def test_cache_hit_flag_recorded_but_hidden_from_model():
     assert "_cache_hit" not in record.result
     tool_msg = next(m for m in model.seen[1] if isinstance(m, ToolMessage))
     assert "_cache_hit" not in tool_msg.content
+
+
+# --- 429 fallback
+
+import groq
+import httpx
+import pytest
+from langchain_core.language_models import BaseChatModel
+from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
+from langchain_core.outputs import ChatResult as LCChatResult
+
+
+def _rate_limit() -> groq.RateLimitError:
+    response = httpx.Response(429, request=httpx.Request("POST", "http://groq.test"))
+    return groq.RateLimitError("rate limited", response=response, body=None)
+
+
+class RateLimitedModel(FakeMessagesListChatModel):
+    def bind_tools(self, tools):
+        return self
+
+    def _generate(self, messages, stop=None, run_manager=None, **kwargs) -> LCChatResult:
+        raise _rate_limit()
+
+
+class AnsweringModel(FakeMessagesListChatModel):
+    def bind_tools(self, tools):
+        return self
+
+
+async def _run_with(primary: BaseChatModel, fallback: BaseChatModel | None):
+    return await run_agent(
+        primary, system="sys", messages=HISTORY, tools=[ECHO], fallback=fallback
+    )
+
+
+async def test_rate_limit_falls_back_to_second_model():
+    primary = RateLimitedModel(responses=[AIMessage(content="never")])
+    fallback = AnsweringModel(responses=[AIMessage(content="From the fallback.")])
+    result = await _run_with(primary, fallback)
+    assert result.text == "From the fallback."
+
+
+async def test_rate_limit_without_fallback_raises():
+    primary = RateLimitedModel(responses=[AIMessage(content="never")])
+    with pytest.raises(groq.RateLimitError):
+        await _run_with(primary, None)

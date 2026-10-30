@@ -15,6 +15,8 @@ class GroqLLMClient:
         model: str,
         temperature: float | None = None,
         reasoning_effort: str | None = None,
+        max_tokens: int | None = None,
+        max_retries: int | None = None,
     ) -> None:
         self.api_key = api_key
         self.model = model
@@ -22,6 +24,9 @@ class GroqLLMClient:
         self.temperature = temperature
         # None → the model's default; the router pins "low" (gpt-oss only).
         self.reasoning_effort = reasoning_effort
+        # None → ChatGroq's defaults; the app caps output and sets retries (see factory).
+        self.max_tokens = max_tokens
+        self.max_retries = max_retries
         self._chat: BaseChatModel | None = None
 
     @property
@@ -32,5 +37,9 @@ class GroqLLMClient:
             kwargs = {} if self.temperature is None else {"temperature": self.temperature}
             if self.reasoning_effort is not None:
                 kwargs["reasoning_effort"] = self.reasoning_effort
+            if self.max_tokens is not None:
+                kwargs["max_tokens"] = self.max_tokens
+            if self.max_retries is not None:
+                kwargs["max_retries"] = self.max_retries
             self._chat = ChatGroq(model=self.model, api_key=self.api_key, **kwargs)
         return self._chat

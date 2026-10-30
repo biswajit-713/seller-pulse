@@ -15,6 +15,8 @@ DEFAULT_JUDGE_MODEL = "qwen/qwen3.8-27b"
 # Query classifier (rt-04). Chosen by rt-05: 31/31 routes ×3 runs, and it keeps the router off
 # the agent model's per-model Groq token limits (see plan/rt-00-overview.md).
 DEFAULT_ROUTER_MODEL = "openai/gpt-oss-20b"
+# OpenRouter: the 429 fallback for the agent model (same gpt-oss family, free tier).
+DEFAULT_OPENROUTER_MODEL = "openai/gpt-oss-120b:free"
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]  # verified: reaches the repo root
 DATA_DIR = PROJECT_ROOT / "data"
@@ -45,6 +47,9 @@ class Settings:
     server_port: int
     chroma_path: Path
     seller_id: str
+    # Set → used as the agent model's fallback when Groq answers 429 (llm/factory.py).
+    openrouter_api_key: str | None = None
+    openrouter_model: str = DEFAULT_OPENROUTER_MODEL
     judge_model: str = DEFAULT_JUDGE_MODEL
     router_model: str = DEFAULT_ROUTER_MODEL
     # ROUTING=off (rt-07's revert path): no classifier call, every module and every tool.
@@ -99,6 +104,8 @@ def load_settings() -> Settings:
         server_port=int(os.getenv("SERVER_PORT", "7860")),
         chroma_path=Path(os.getenv("CHROMA_PATH") or DEFAULT_CHROMA_PATH),
         seller_id=seller_id,
+        openrouter_api_key=os.getenv("OPENROUTER_API_KEY") or None,
+        openrouter_model=os.getenv("OPENROUTER_MODEL") or DEFAULT_OPENROUTER_MODEL,
         judge_model=os.getenv("JUDGE_MODEL") or DEFAULT_JUDGE_MODEL,
         router_model=os.getenv("ROUTER_MODEL") or DEFAULT_ROUTER_MODEL,
         routing=_load_routing(),

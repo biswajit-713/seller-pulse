@@ -40,7 +40,7 @@ supersedes — treat the code as the source of truth and flag the stale doc to t
 
 ```bash
 uv sync                          # install/update deps into .venv
-cp .env.example .env             # first-time setup; set GROQ_API_KEY (LLM_PROVIDER=groq) and SELLER_ID (required); ROUTER_MODEL optional (blank → DEFAULT_ROUTER_MODEL), ROUTING=on|off (default on), MEMORY_PATH optional (blank → data/memory), CACHING=on|off (default on) + CACHE_EMBED_MAX/CACHE_TOOL_MAX/CACHE_TOOL_TTL_S optional (blank → 1024/256/300)
+cp .env.example .env             # first-time setup; set GROQ_API_KEY (LLM_PROVIDER=groq) and SELLER_ID (required); ROUTER_MODEL optional (blank → DEFAULT_ROUTER_MODEL), ROUTING=on|off (default on), OPENROUTER_API_KEY/OPENROUTER_MODEL optional (agent-model fallback on Groq 429; blank key → none, Groq retries 4× instead of 1×), MEMORY_PATH optional (blank → data/memory), CACHING=on|off (default on) + CACHE_EMBED_MAX/CACHE_TOOL_MAX/CACHE_TOOL_TTL_S optional (blank → 1024/256/300)
 uv run python -m seller_pulse    # run the app — Gradio chat at http://localhost:7860
 uv run pytest                    # run tests (dev group: pytest, pytest-asyncio; asyncio_mode=auto)
 uv run python -m seller_pulse.mcp_server  # analytics MCP server on stdio, standalone (the app spawns its own)

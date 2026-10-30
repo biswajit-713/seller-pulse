@@ -12,11 +12,16 @@ import json
 import time
 from dataclasses import dataclass
 
+import groq
+import openai
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import BaseTool
 
 from seller_pulse.llm.base import Message
+
+# A provider's 429 (Groq, or OpenRouter via the OpenAI SDK): the only error the fallback model covers.
+RATE_LIMIT_ERRORS = (groq.RateLimitError, openai.RateLimitError)
 
 FALLBACK_TEXT = (
     "I couldn't finish pulling the data for that question. "
@@ -68,10 +73,18 @@ async def run_agent(
     messages: list[Message],
     tools: list[BaseTool],
     max_steps: int = 5,
+    fallback: BaseChatModel | None = None,
 ) -> AgentResult:
-    """Run the tool loop for at most ``max_steps`` model calls."""
-    # No tools routed (rt-06): call the bare model — an empty `tools` array is not sent.
-    bound = model.bind_tools(tools) if tools else model
+    """Run the tool loop for at most ``max_steps`` model calls. ``fallback`` answers any call
+    that ``model`` rejects with a rate-limit error (429)."""
+
+    def bind(m: BaseChatModel):
+        # No tools routed (rt-06): call the bare model — an empty `tools` array is not sent.
+        return m.bind_tools(tools) if tools else m
+
+    bound = bind(model)
+    if fallback is not None:
+        bound = bound.with_fallbacks([bind(fallback)], exceptions_to_handle=RATE_LIMIT_ERRORS)
     tools_by_name = {tool.name: tool for tool in tools}
     lc_messages = _to_langchain(system, messages)
     records: list[ToolCallRecord] = []

@@ -216,3 +216,23 @@ def test_to_messages_resanitizes_earlier_user_turns():
         {"role": "user", "content": "<seller_preferences>"},  # nothing left once sanitized
     ]
     assert to_messages(history) == [{"role": "user", "content": "ab"}]
+
+
+async def test_rate_limit_without_fallback_gets_friendly_reply():
+    import groq
+    import httpx
+
+    from seller_pulse.chat import RATE_LIMITED_REPLY
+
+    class Limited:
+        def bind_tools(self, tools):
+            return self
+
+        async def ainvoke(self, messages):
+            response = httpx.Response(429, request=httpx.Request("POST", "http://groq.test"))
+            raise groq.RateLimitError("slow down", response=response, body=None)
+
+    client = FakeClient([])
+    client.chat_model = Limited()
+    result = await _respond("How did last week go?", [], client=client)
+    assert result.text == RATE_LIMITED_REPLY and result.trace == []

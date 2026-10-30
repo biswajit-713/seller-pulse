@@ -15,7 +15,7 @@ from typing import Any
 
 from langchain_core.tools import BaseTool
 
-from seller_pulse.agent import ToolCallRecord, run_agent
+from seller_pulse.agent import RATE_LIMIT_ERRORS, ToolCallRecord, run_agent
 from seller_pulse.formatters import render_answer
 from seller_pulse.guardrails import GuardrailReport, annotate, check_output
 from seller_pulse.llm.base import LLMClient, Message
@@ -29,6 +29,9 @@ from seller_pulse.sanitize import sanitize
 logger = logging.getLogger(__name__)
 
 EMPTY_INPUT_REPLY = "Type a question about your seller data and I'll take a look."
+RATE_LIMITED_REPLY = (
+    "The AI service is rate-limited right now. Please wait a minute and ask again."
+)
 
 # `router.classify_query` with its model bound (`functools.partial`); a callable so tests can
 # fake it without a chat model. Must not raise — `classify_query` fails open itself.
@@ -104,6 +107,7 @@ async def respond(
     tools: list[BaseTool],
     classify: Classifier,
     store: PreferenceStore | None,
+    fallback: LLMClient | None = None,
 ) -> ChatResult:
     """One chat turn. `store` is the seller's saved preferences, re-read every turn so a value
     saved mid-session applies on the next one; `None` runs with no recall (the agent eval)."""
@@ -132,7 +136,17 @@ async def respond(
     system = f"{build_system_prompt(decision.routes)}\n\n{context_block}"
     if recalled := render_preferences(preferences):
         system += f"\n\n{recalled}"
-    result = await run_agent(client.chat_model, system=system, messages=messages, tools=routed_tools)
+    try:
+        result = await run_agent(
+            client.chat_model,
+            system=system,
+            messages=messages,
+            tools=routed_tools,
+            fallback=fallback.chat_model if fallback else None,
+        )
+    except RATE_LIMIT_ERRORS:
+        logger.warning("rate limited (429) on the agent model; no fallback answered")
+        return ChatResult(text=RATE_LIMITED_REPLY, trace=[], routes=decision.routes)
     for record in result.tool_calls:
         _log_tool_call(record)
 

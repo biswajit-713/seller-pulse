@@ -9,7 +9,7 @@ import gradio as gr
 from seller_pulse.cache import CacheStats, MemoryCache, cached_tools
 from seller_pulse.chat import respond
 from seller_pulse.config import Settings, load_settings
-from seller_pulse.llm import get_client
+from seller_pulse.llm import get_client, get_fallback_client
 from seller_pulse.mcp_tools import load_mcp_tools
 from seller_pulse.memory import PreferenceStore
 from seller_pulse.rag.retrieval import build_retriever
@@ -25,6 +25,7 @@ DESCRIPTION = "Ask a question in plain English about your seller data."
 def build_app(settings: Settings | None = None) -> gr.Blocks:
     settings = settings or load_settings()
     client = get_client(settings)  # built once, reused for every message
+    fallback = get_fallback_client(settings)  # None unless OPENROUTER_API_KEY is set
     logger.info("caching=%s", "on" if settings.caching else "off")
     embed_cache = (
         MemoryCache(max_entries=settings.cache_embed_max, name="embed")
@@ -56,6 +57,7 @@ def build_app(settings: Settings | None = None) -> gr.Blocks:
             tools=tools,
             classify=classify,
             store=store,
+            fallback=fallback,
         )
         return result.text, render_trace(result), render_badges(result)
 
