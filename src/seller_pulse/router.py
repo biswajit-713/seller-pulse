@@ -170,15 +170,16 @@ async def classify_query(
     history: list[Message],
     *,
     timeout_s: float = CLASSIFY_TIMEOUT_S,
+    callbacks: list | None = None,
 ) -> RouteDecision:
     """Route one message. Never raises: any failure returns `ALL_ROUTES` with `fallback=True`."""
     start = time.perf_counter()
     try:
+        runnable = model.with_structured_output(RouteSchema, **STRUCTURED_OUTPUT)
+        if callbacks:
+            runnable = runnable.with_config(callbacks=callbacks)
         answer = await asyncio.wait_for(
-            model.with_structured_output(RouteSchema, **STRUCTURED_OUTPUT).ainvoke(
-                build_messages(question, history)
-            ),
-            timeout=timeout_s,
+            runnable.ainvoke(build_messages(question, history)), timeout=timeout_s
         )
         if not isinstance(answer, RouteSchema):
             raise TypeError(f"unparseable output: {answer!r}")
@@ -193,7 +194,9 @@ async def classify_query(
     )
 
 
-async def route_all(question: str, history: list[Message]) -> RouteDecision:
+async def route_all(
+    question: str, history: list[Message], callbacks: list | None = None
+) -> RouteDecision:
     """ROUTING=off: the monolithic prompt — every module, every tool, no model call.
 
     Not a fallback: nothing failed, so `fallback=False`.

@@ -1,6 +1,7 @@
 """The Gradio chat UI."""
 
 import asyncio
+import atexit
 import logging
 from typing import Any
 
@@ -15,6 +16,7 @@ from seller_pulse.memory import PreferenceStore
 from seller_pulse.rag.retrieval import build_retriever
 from seller_pulse.router import build_classifier
 from seller_pulse.tools import build_memory_tools
+from seller_pulse.tracing import build_tracing
 from seller_pulse.trace_view import render_badges, render_trace
 
 logger = logging.getLogger(__name__)
@@ -47,8 +49,12 @@ def build_app(settings: Settings | None = None) -> gr.Blocks:
         )
     tools = analytics + build_memory_tools(store)
     classify = build_classifier(settings)
+    tracing = build_tracing(settings)
+    atexit.register(tracing.flush)
 
-    async def handle(message: str, history: list[dict[str, Any]]) -> tuple[str, str, str]:
+    async def handle(
+        message: str, history: list[dict[str, Any]], request: gr.Request
+    ) -> tuple[str, str, str]:
         result = await respond(
             message,
             history,
@@ -58,6 +64,8 @@ def build_app(settings: Settings | None = None) -> gr.Blocks:
             classify=classify,
             store=store,
             fallback=fallback,
+            tracing=tracing,
+            session_id=request.session_hash if request else None,
         )
         return result.text, render_trace(result), render_badges(result)
 

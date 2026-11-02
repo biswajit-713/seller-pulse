@@ -25,6 +25,7 @@ from seller_pulse.rag.context import render_context
 from seller_pulse.rag.retrieval import Retriever
 from seller_pulse.router import Route, RouteDecision, tools_for
 from seller_pulse.sanitize import sanitize
+from seller_pulse.tracing import Tracing
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ RATE_LIMITED_REPLY = (
 
 # `router.classify_query` with its model bound (`functools.partial`); a callable so tests can
 # fake it without a chat model. Must not raise — `classify_query` fails open itself.
-Classifier = Callable[[str, list[Message]], Awaitable[RouteDecision]]
+Classifier = Callable[..., Awaitable[RouteDecision]]  # (question, history, *, callbacks=None)
 
 
 @dataclass(frozen=True)
@@ -46,6 +47,7 @@ class ChatResult:
     route_fallback: bool = False  # the classifier failed open to all routes
     preferences: list[Preference] = field(default_factory=list)  # injected into this turn's prompt
     guardrail: GuardrailReport | None = None  # None on the empty-input path (no model call)
+    trace_id: str | None = None  # the turn's Langfuse trace; None when not tracing
 
 
 def to_messages(history: list[dict[str, Any]] | None) -> list[Message]:
@@ -108,76 +110,85 @@ async def respond(
     classify: Classifier,
     store: PreferenceStore | None,
     fallback: LLMClient | None = None,
+    tracing: Tracing = Tracing(),
+    session_id: str | None = None,
 ) -> ChatResult:
     """One chat turn. `store` is the seller's saved preferences, re-read every turn so a value
-    saved mid-session applies on the next one; `None` runs with no recall (the agent eval)."""
+    saved mid-session applies on the next one; `None` runs with no recall (the agent eval).
+    `tracing` opens one Langfuse trace per non-empty turn (off by default)."""
     started = time.perf_counter()
     clean = sanitize(message)
     if not clean:
         return ChatResult(text=EMPTY_INPUT_REPLY, trace=[])
 
-    previous = to_messages(history)
-    decision, retrieved = await asyncio.gather(
-        classify(clean, previous), asyncio.to_thread(retriever.retrieve, clean)
-    )
-    routed_tools = tools_for(decision.routes, tools)
-    logger.info(
-        "routes=%s fallback=%s classify_ms=%d tools=%s",
-        [r.value for r in sorted(decision.routes)],
-        decision.fallback,
-        decision.latency_ms,
-        [t.name for t in routed_tools],
-    )
-
-    messages: list[Message] = [*previous, {"role": "user", "content": clean}]
-    preferences = list(store.get_all().values()) if store else []
-    # Rendered once: the guardrail must check against the exact context bytes the model saw.
-    context_block = render_context(retrieved)
-    system = f"{build_system_prompt(decision.routes)}\n\n{context_block}"
-    if recalled := render_preferences(preferences):
-        system += f"\n\n{recalled}"
-    try:
-        result = await run_agent(
-            client.chat_model,
-            system=system,
-            messages=messages,
-            tools=routed_tools,
-            fallback=fallback.chat_model if fallback else None,
+    with tracing.turn(session_id=session_id) as trace:
+        previous = to_messages(history)
+        callbacks = {"callbacks": [trace.handler]} if trace.handler else {}
+        decision, retrieved = await asyncio.gather(
+            classify(clean, previous, **callbacks), asyncio.to_thread(retriever.retrieve, clean)
         )
-    except RATE_LIMIT_ERRORS:
-        logger.warning("rate limited (429) on the agent model; no fallback answered")
-        return ChatResult(text=RATE_LIMITED_REPLY, trace=[], routes=decision.routes)
-    for record in result.tool_calls:
-        _log_tool_call(record)
+        routed_tools = tools_for(decision.routes, tools)
+        logger.info(
+            "routes=%s fallback=%s classify_ms=%d tools=%s",
+            [r.value for r in sorted(decision.routes)],
+            decision.fallback,
+            decision.latency_ms,
+            [t.name for t in routed_tools],
+        )
 
-    # A lone analytics call is rendered in code so the same question reads the same every time.
-    text = render_answer(result.tool_calls, preferences) or result.text
-    report = check_output(
-        text,
-        trace=result.tool_calls,
-        retrieved_context=context_block,
-        query=clean,
-        preferences=preferences,
-        routes=decision.routes,
-    )
-    logger.info(
-        "guardrail triggered=%s figures=%s ids=%s draft_pending=%s publish_claim=%s "
-        "policy_refusal=%s clauses=%s",
-        report.triggered,
-        report.unverified_figures,
-        report.ungrounded_ids,
-        report.draft_pending,
-        report.publish_claim,
-        report.policy_refusal,
-        report.policy_clauses,
-    )
-    final = annotate(text, report)
-    logger.info("turn_ms=%d", (time.perf_counter() - started) * 1000)
-    return ChatResult(
-        text=final,
-        trace=result.tool_calls,
-        routes=decision.routes,
-        route_fallback=decision.fallback,
-        preferences=preferences,
-        guardrail=report,
-    )
+        messages: list[Message] = [*previous, {"role": "user", "content": clean}]
+        preferences = list(store.get_all().values()) if store else []
+        # Rendered once: the guardrail must check against the exact context bytes the model saw.
+        context_block = render_context(retrieved)
+        system = f"{build_system_prompt(decision.routes)}\n\n{context_block}"
+        if recalled := render_preferences(preferences):
+            system += f"\n\n{recalled}"
+        try:
+            result = await run_agent(
+                client.chat_model,
+                system=system,
+                messages=messages,
+                tools=routed_tools,
+                fallback=fallback.chat_model if fallback else None,
+                **callbacks,
+            )
+        except RATE_LIMIT_ERRORS:
+            logger.warning("rate limited (429) on the agent model; no fallback answered")
+            return ChatResult(
+                text=RATE_LIMITED_REPLY, trace=[], routes=decision.routes, trace_id=trace.trace_id
+            )
+        for record in result.tool_calls:
+            _log_tool_call(record)
+
+        # A lone analytics call is rendered in code so the same question reads the same every time.
+        text = render_answer(result.tool_calls, preferences) or result.text
+        report = check_output(
+            text,
+            trace=result.tool_calls,
+            retrieved_context=context_block,
+            query=clean,
+            preferences=preferences,
+            routes=decision.routes,
+        )
+        logger.info(
+            "guardrail triggered=%s figures=%s ids=%s draft_pending=%s publish_claim=%s "
+            "policy_refusal=%s clauses=%s",
+            report.triggered,
+            report.unverified_figures,
+            report.ungrounded_ids,
+            report.draft_pending,
+            report.publish_claim,
+            report.policy_refusal,
+            report.policy_clauses,
+        )
+        final = annotate(text, report)
+        logger.info("turn_ms=%d trace_id=%s", (time.perf_counter() - started) * 1000, trace.trace_id)
+        return ChatResult(
+            text=final,
+            trace=result.tool_calls,
+            routes=decision.routes,
+            route_fallback=decision.fallback,
+            preferences=preferences,
+            guardrail=report,
+            trace_id=trace.trace_id,
+        )

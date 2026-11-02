@@ -74,9 +74,11 @@ async def run_agent(
     tools: list[BaseTool],
     max_steps: int = 5,
     fallback: BaseChatModel | None = None,
+    callbacks: list | None = None,
 ) -> AgentResult:
     """Run the tool loop for at most ``max_steps`` model calls. ``fallback`` answers any call
-    that ``model`` rejects with a rate-limit error (429)."""
+    that ``model`` rejects with a rate-limit error (429). ``callbacks`` (e.g. a tracing handler)
+    are attached to every model call."""
 
     def bind(m: BaseChatModel):
         # No tools routed (rt-06): call the bare model — an empty `tools` array is not sent.
@@ -85,6 +87,8 @@ async def run_agent(
     bound = bind(model)
     if fallback is not None:
         bound = bound.with_fallbacks([bind(fallback)], exceptions_to_handle=RATE_LIMIT_ERRORS)
+    if callbacks:
+        bound = bound.with_config(callbacks=callbacks)
     tools_by_name = {tool.name: tool for tool in tools}
     lc_messages = _to_langchain(system, messages)
     records: list[ToolCallRecord] = []

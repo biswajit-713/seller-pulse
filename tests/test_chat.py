@@ -1,4 +1,5 @@
 import logging
+from contextlib import contextmanager
 from functools import partial
 
 from langchain_core.messages import AIMessage
@@ -9,6 +10,7 @@ from seller_pulse.guardrails import UNVERIFIED_NOTE
 from seller_pulse.prompts import CORE, MODULES
 from seller_pulse.rag.retrieval import RetrievalMode, RetrievalResult
 from seller_pulse.router import ALL_ROUTES, Route, RouteDecision, classify_query
+from seller_pulse.tracing import Tracing, TurnTrace
 
 
 class ScriptedChatModel:
@@ -16,9 +18,14 @@ class ScriptedChatModel:
         self.replies = list(replies)
         self.bound: list[str] | None = None  # tool names, or None if bind_tools was never called
         self.system: str | None = None
+        self.config: dict | None = None  # with_config kwargs, if tracing attached callbacks
 
     def bind_tools(self, tools):
         self.bound = [t.name for t in tools]
+        return self
+
+    def with_config(self, **config):
+        self.config = config
         return self
 
     async def ainvoke(self, messages):
@@ -236,3 +243,65 @@ async def test_rate_limit_without_fallback_gets_friendly_reply():
     client.chat_model = Limited()
     result = await _respond("How did last week go?", [], client=client)
     assert result.text == RATE_LIMITED_REPLY and result.trace == []
+
+
+class FakeTracing(Tracing):
+    """A tracing handle that records each opened trace, like `Tracing.turn` with a live client."""
+
+    def __init__(self, fail: bool = False) -> None:
+        super().__init__()
+        self.opened: list[tuple[str | None, TurnTrace]] = []
+        self.fail = fail
+
+    @contextmanager
+    def turn(self, name="turn", session_id=None, **attrs):
+        trace = TurnTrace(None if self.fail else f"trace-{len(self.opened) + 1}", None if self.fail else object())
+        self.opened.append((session_id, trace))
+        yield trace
+
+
+async def _traced(tracing, classify, client, message="How many SKU-1001?"):
+    return await respond(
+        message, [], client=client, retriever=FakeRetriever(), tools=TOOLS,
+        classify=classify, store=None, tracing=tracing, session_id="sess-1",
+    )
+
+
+async def test_each_turn_gets_one_trace_and_the_id_is_on_the_result(caplog):
+    seen = {}
+
+    async def classify(question, history, callbacks=None):
+        seen["callbacks"] = callbacks
+        return RouteDecision(routes=frozenset({Route.DATA}), fallback=False, latency_ms=1)
+
+    tracing = FakeTracing()
+    client = FakeClient([AIMessage(content="Hello.")])
+    with caplog.at_level(logging.INFO):
+        result = await _traced(tracing, classify, client)
+    assert result.trace_id == "trace-1"
+    assert [sid for sid, _ in tracing.opened] == ["sess-1"]
+    handler = tracing.opened[0][1].handler
+    assert seen["callbacks"] == [handler]  # router call
+    assert client.chat_model.config == {"callbacks": [handler]}  # agent model calls
+    assert "trace_id=trace-1" in caplog.text
+
+
+async def test_empty_input_opens_no_trace():
+    tracing = FakeTracing()
+    result = await _traced(tracing, _routed(), FakeClient([]), message="   ")
+    assert tracing.opened == []
+    assert result.trace_id is None
+
+
+async def test_failed_tracing_leaves_the_answer_unchanged():
+    tracing = FakeTracing(fail=True)  # what `Tracing.turn` yields when Langfuse is down
+    client = FakeClient([AIMessage(content="Hello.")])
+    result = await _traced(tracing, _routed(Route.DATA), client)
+    assert result.text == "Hello."
+    assert result.trace_id is None
+    assert client.chat_model.config is None
+
+
+async def test_tracing_disabled_by_default():
+    result = await _respond("How many SKU-1001?", [AIMessage(content="Hello.")])
+    assert result.trace_id is None

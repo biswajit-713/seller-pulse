@@ -178,3 +178,28 @@ async def test_rate_limit_without_fallback_raises():
     primary = RateLimitedModel(responses=[AIMessage(content="never")])
     with pytest.raises(groq.RateLimitError):
         await _run_with(primary, None)
+
+
+async def test_callbacks_see_every_model_call():
+    from langchain_core.callbacks import BaseCallbackHandler
+
+    class Recorder(BaseCallbackHandler):
+        starts = 0
+        tool_starts = 0
+
+        def on_chat_model_start(self, *args, **kwargs):
+            self.starts += 1
+
+        def on_tool_start(self, *args, **kwargs):
+            self.tool_starts += 1
+
+    recorder = Recorder()
+    model = AnsweringModel(responses=[AIMessage(content="Done.")])
+    result = await run_agent(
+        model, system="sys", messages=HISTORY, tools=[ECHO], callbacks=[recorder]
+    )
+    assert result.text == "Done."
+    assert recorder.starts == 1
+    # The loop calls tools itself with `ainvoke` and no config: the handler sees model calls
+    # only, so tool spans are added by hand (w4-04).
+    assert recorder.tool_starts == 0

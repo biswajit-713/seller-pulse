@@ -6,7 +6,7 @@ pay for it). When tracing is off or Langfuse misbehaves, callers get ``NO_TRACE`
 
 import logging
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 from typing import Any
 
@@ -35,31 +35,40 @@ class Tracing:
         return self._client is not None
 
     @contextmanager
-    def turn(self, name: str = "turn", **attrs: Any) -> Iterator[TurnTrace]:
-        """Open a trace; LangChain calls made with ``.handler`` nest under it."""
+    def turn(
+        self, name: str = "turn", session_id: str | None = None, **attrs: Any
+    ) -> Iterator[TurnTrace]:
+        """Open a trace; LangChain calls made with ``.handler`` nest under it.
+        ``session_id`` groups the traces of one chat session in Langfuse."""
         if self._client is None:
             yield NO_TRACE
             return
+        scope = ExitStack()
         try:
+            from langfuse import propagate_attributes
             from langfuse.langchain import CallbackHandler
 
             trace_id = self._client.create_trace_id()
-            span_cm = self._client.start_as_current_observation(
-                name=name, as_type="span", trace_context={"trace_id": trace_id}, **attrs
+            scope.enter_context(
+                self._client.start_as_current_observation(
+                    name=name, as_type="span", trace_context={"trace_id": trace_id}, **attrs
+                )
             )
-            span_cm.__enter__()
+            if session_id:
+                scope.enter_context(propagate_attributes(session_id=session_id))
             trace = TurnTrace(trace_id, CallbackHandler())
         except Exception:
             logger.warning("tracing: could not start trace", exc_info=True)
+            _close(scope, None, None, None)
             yield NO_TRACE
             return
         try:
             yield trace
         except BaseException as exc:
-            _close(span_cm, type(exc), exc, exc.__traceback__)
+            _close(scope, type(exc), exc, exc.__traceback__)
             raise
         else:
-            _close(span_cm, None, None, None)
+            _close(scope, None, None, None)
 
     def flush(self) -> None:
         if self._client is None:
@@ -70,9 +79,9 @@ class Tracing:
             logger.warning("tracing: flush failed", exc_info=True)
 
 
-def _close(span_cm: Any, *exc_info: Any) -> None:
+def _close(scope: Any, *exc_info: Any) -> None:
     try:
-        span_cm.__exit__(*exc_info)
+        scope.__exit__(*exc_info)
     except Exception:
         logger.warning("tracing: could not close trace", exc_info=True)
 

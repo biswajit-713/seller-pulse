@@ -37,6 +37,10 @@ class FakeRouterModel:
         self.schema, self.kwargs = schema, kwargs
         return self
 
+    def with_config(self, **config):
+        self.config = config
+        return self
+
     async def ainvoke(self, messages):
         self.seen.append(messages)
         if self.delay_s:
@@ -50,6 +54,12 @@ class FakeRouterModel:
 def _human(model: FakeRouterModel) -> str:
     [messages] = model.seen
     return messages[-1].content
+
+
+async def test_callbacks_attach_to_the_classifier_call():
+    model = FakeRouterModel({"routes": ["data"]})
+    await classify_query(model, "q", [], callbacks=["handler"])
+    assert model.config == {"callbacks": ["handler"]}
 
 
 async def test_multi_label_answer_is_parsed():
