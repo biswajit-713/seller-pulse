@@ -61,19 +61,21 @@ class Settings:
     cache_embed_max: int = DEFAULT_CACHE_EMBED_MAX
     cache_tool_max: int = DEFAULT_CACHE_TOOL_MAX
     cache_tool_ttl_s: float = DEFAULT_CACHE_TOOL_TTL_S
+    # TRACING=off: no Langfuse traces. Tracing is also off when either key is blank.
+    tracing: bool = True
+    langfuse_public_key: str | None = None
+    langfuse_secret_key: str | None = None
+    langfuse_host: str | None = None  # None → the SDK default (Langfuse Cloud EU)
+
+    @property
+    def tracing_active(self) -> bool:
+        return self.tracing and bool(self.langfuse_public_key and self.langfuse_secret_key)
 
 
-def _load_routing() -> bool:
-    value = (os.getenv("ROUTING") or "on").strip().lower()
+def _load_on_off(name: str) -> bool:
+    value = (os.getenv(name) or "on").strip().lower()
     if value not in ("on", "off"):
-        raise ValueError(f"ROUTING must be 'on' or 'off', got {value!r}.")
-    return value == "on"
-
-
-def _load_caching() -> bool:
-    value = (os.getenv("CACHING") or "on").strip().lower()
-    if value not in ("on", "off"):
-        raise ValueError(f"CACHING must be 'on' or 'off', got {value!r}.")
+        raise ValueError(f"{name} must be 'on' or 'off', got {value!r}.")
     return value == "on"
 
 
@@ -108,10 +110,14 @@ def load_settings() -> Settings:
         openrouter_model=os.getenv("OPENROUTER_MODEL") or DEFAULT_OPENROUTER_MODEL,
         judge_model=os.getenv("JUDGE_MODEL") or DEFAULT_JUDGE_MODEL,
         router_model=os.getenv("ROUTER_MODEL") or DEFAULT_ROUTER_MODEL,
-        routing=_load_routing(),
+        routing=_load_on_off("ROUTING"),
         memory_path=Path(os.getenv("MEMORY_PATH") or DEFAULT_MEMORY_PATH),
-        caching=_load_caching(),
+        caching=_load_on_off("CACHING"),
         cache_embed_max=int(_positive("CACHE_EMBED_MAX", DEFAULT_CACHE_EMBED_MAX)),
         cache_tool_max=int(_positive("CACHE_TOOL_MAX", DEFAULT_CACHE_TOOL_MAX)),
         cache_tool_ttl_s=_positive("CACHE_TOOL_TTL_S", DEFAULT_CACHE_TOOL_TTL_S),
+        tracing=_load_on_off("TRACING"),
+        langfuse_public_key=(os.getenv("LANGFUSE_PUBLIC_KEY") or "").strip() or None,
+        langfuse_secret_key=(os.getenv("LANGFUSE_SECRET_KEY") or "").strip() or None,
+        langfuse_host=(os.getenv("LANGFUSE_HOST") or "").strip() or None,
     )
