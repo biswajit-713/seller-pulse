@@ -63,3 +63,81 @@ def test_body_exceptions_propagate():
     with pytest.raises(ValueError):
         with Tracing().turn():
             raise ValueError("boom")
+
+
+# --- w4-04: events and scores -------------------------------------------------------------
+
+from seller_pulse.agent import ToolCallRecord
+from seller_pulse.guardrails import GuardrailReport
+from seller_pulse.rag.retrieval import Hit, RetrievalMode, RetrievalResult
+from seller_pulse.router import Route, RouteDecision
+from seller_pulse.tracing import TurnTrace
+
+
+class FakeObservation:
+    def end(self):
+        pass
+
+
+class RecordingClient:
+    def __init__(self):
+        self.spans, self.scores, self.updates = [], {}, []
+
+    def start_observation(self, **kw):
+        self.spans.append(kw)
+        return FakeObservation()
+
+    def create_score(self, **kw):
+        assert kw["trace_id"] == "t1" and kw["data_type"] == "NUMERIC"
+        self.scores[kw["name"]] = kw["value"]
+
+    def update_current_span(self, **kw):
+        self.updates.append(kw)
+
+
+def _record(calls, report=None, embed=(1, 0), client=None):
+    client = client or RecordingClient()
+    report = report or GuardrailReport([], [], False, False, False, [])
+    retrieved = RetrievalResult(
+        mode=RetrievalMode.GENERAL,
+        question="q",
+        reviews=(Hit("R1", "text", 0.2, {}, "c"),),
+    )
+    Tracing(client).record_turn(
+        TurnTrace("t1", object()),
+        decision=RouteDecision(frozenset({Route.DATA}), False, 5),
+        retrieved=retrieved, embed_cache=embed, tool_calls=calls, report=report, turn_ms=42,
+    )
+    return client
+
+
+def test_clean_turn_scores_zero():
+    client = _record([ToolCallRecord("t", {}, {"ok": True}, cached=True, latency_ms=3)])
+    assert client.scores == {"tool_failures": 0, "tool_calls": 1, "guardrail_triggered": 0}
+    assert [s["name"] for s in client.spans] == ["route", "retrieval", "t", "guardrail"]
+    retrieval = client.spans[1]["metadata"]
+    assert retrieval["hits"] == [{"id": "R1", "distance": 0.2}] and retrieval["embed_cache_hits"] == 1
+    assert client.spans[2]["metadata"]["cached"] is True
+    assert client.spans[2]["level"] is None
+    assert client.updates == [{"metadata": {"turn_ms": 42}}]
+
+
+def test_failed_tool_call_is_an_error_span():
+    bad = ToolCallRecord("find", {"sku": "X"}, {"ok": False, "error": {"code": "NOT_FOUND"}})
+    client = _record([bad])
+    span = client.spans[2]
+    assert span["level"] == "ERROR" and "NOT_FOUND" in span["status_message"]
+    assert client.scores["tool_failures"] == 1
+
+
+def test_triggered_guardrail_scores_one():
+    client = _record([], GuardrailReport(["9"], [], False, False, False, []))
+    assert client.scores["guardrail_triggered"] == 1
+    assert client.spans[-1]["metadata"]["unverified_figures"] == ["9"]
+
+
+def test_record_turn_is_a_noop_without_a_trace_and_swallows_errors(caplog):
+    assert _record([], client=RecordingClient()).spans  # sanity: records when traced
+    Tracing().record_turn(TurnTrace(), decision=None, retrieved=None, embed_cache=None, tool_calls=[], report=None, turn_ms=0)
+    Tracing(BrokenClient()).record_turn(TurnTrace("t1", object()), decision=None, retrieved=None, embed_cache=None, tool_calls=[], report=None, turn_ms=0)
+    assert "could not record turn events" in caplog.text

@@ -8,9 +8,15 @@ import logging
 from collections.abc import Iterator
 from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from seller_pulse.config import Settings
+
+if TYPE_CHECKING:
+    from seller_pulse.agent import ToolCallRecord
+    from seller_pulse.guardrails import GuardrailReport
+    from seller_pulse.rag.retrieval import RetrievalResult
+    from seller_pulse.router import RouteDecision
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +76,65 @@ class Tracing:
         else:
             _close(scope, None, None, None)
 
+    def record_turn(
+        self,
+        trace: TurnTrace,
+        *,
+        decision: "RouteDecision",
+        retrieved: "RetrievalResult",
+        embed_cache: tuple[int, int] | None,
+        tool_calls: "list[ToolCallRecord]",
+        report: "GuardrailReport",
+        turn_ms: int,
+    ) -> None:
+        """Write the turn's events as child spans of the open turn trace, plus the numeric
+        scores the dashboard aggregates. Call inside ``turn()``. Spans are written after the fact,
+        so their own duration is ~0; the real timings are in metadata (``latency_ms``)."""
+        client = self._client
+        if client is None or trace.trace_id is None:
+            return
+        try:
+            failures = 0
+            _span(
+                client, "route", "span", None,
+                routes=sorted(r.value for r in decision.routes),
+                fallback=decision.fallback, latency_ms=decision.latency_ms,
+            )
+            hits = (*retrieved.reviews, *retrieved.policy)
+            embed = {} if embed_cache is None else {"embed_cache_hits": embed_cache[0], "embed_cache_misses": embed_cache[1]}
+            _span(
+                client, "retrieval", "retriever", None,
+                mode=retrieved.mode.value, count=len(hits), stats=retrieved.stats is not None,
+                hits=[{"id": h.id, "distance": h.distance} for h in hits], **embed,
+            )
+            for record in tool_calls:
+                ok = bool(record.result.get("ok"))
+                code = (record.result.get("error") or {}).get("code")
+                failures += not ok
+                _span(
+                    client, record.name, "tool", None if ok else f"tool failed: {code}",
+                    input=record.args, ok=ok, error_code=code, cached=record.cached,
+                    latency_ms=record.latency_ms,
+                )
+            _span(
+                client, "guardrail", "guardrail", None,
+                triggered=report.triggered, unverified_figures=report.unverified_figures,
+                ungrounded_ids=report.ungrounded_ids, draft_pending=report.draft_pending,
+                publish_claim=report.publish_claim, policy_refusal=report.policy_refusal,
+                policy_clauses=report.policy_clauses,
+            )
+            client.update_current_span(metadata={"turn_ms": turn_ms})
+            for name, value in (
+                ("tool_failures", failures),
+                ("tool_calls", len(tool_calls)),
+                ("guardrail_triggered", int(report.triggered)),
+            ):
+                client.create_score(
+                    name=name, value=float(value), trace_id=trace.trace_id, data_type="NUMERIC"
+                )
+        except Exception:
+            logger.warning("tracing: could not record turn events", exc_info=True)
+
     def flush(self) -> None:
         if self._client is None:
             return
@@ -77,6 +142,16 @@ class Tracing:
             self._client.flush()
         except Exception:
             logger.warning("tracing: flush failed", exc_info=True)
+
+
+def _span(
+    client: Any, name: str, as_type: str, error: str | None, input: Any = None, **metadata: Any
+) -> None:
+    """One finished child span of the current observation; ERROR level when ``error`` is set."""
+    client.start_observation(
+        name=name, as_type=as_type, input=input, metadata=metadata,
+        level="ERROR" if error else None, status_message=error,
+    ).end()
 
 
 def _close(scope: Any, *exc_info: Any) -> None:

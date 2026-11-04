@@ -16,6 +16,7 @@ from typing import Any
 from langchain_core.tools import BaseTool
 
 from seller_pulse.agent import RATE_LIMIT_ERRORS, ToolCallRecord, run_agent
+from seller_pulse.cache import CacheStats
 from seller_pulse.formatters import render_answer
 from seller_pulse.guardrails import GuardrailReport, annotate, check_output
 from seller_pulse.llm.base import LLMClient, Message
@@ -112,10 +113,12 @@ async def respond(
     fallback: LLMClient | None = None,
     tracing: Tracing = Tracing(),
     session_id: str | None = None,
+    embed_stats: CacheStats | None = None,
 ) -> ChatResult:
     """One chat turn. `store` is the seller's saved preferences, re-read every turn so a value
     saved mid-session applies on the next one; `None` runs with no recall (the agent eval).
-    `tracing` opens one Langfuse trace per non-empty turn (off by default)."""
+    `tracing` opens one Langfuse trace per non-empty turn (off by default); `embed_stats` is the
+    query-embedding cache's counters, diffed over the turn for the retrieval span."""
     started = time.perf_counter()
     clean = sanitize(message)
     if not clean:
@@ -123,6 +126,7 @@ async def respond(
 
     with tracing.turn(session_id=session_id) as trace:
         previous = to_messages(history)
+        embed_before = (embed_stats.hits, embed_stats.misses) if embed_stats else None
         callbacks = {"callbacks": [trace.handler]} if trace.handler else {}
         decision, retrieved = await asyncio.gather(
             classify(clean, previous, **callbacks), asyncio.to_thread(retriever.retrieve, clean)
@@ -182,7 +186,21 @@ async def respond(
             report.policy_clauses,
         )
         final = annotate(text, report)
-        logger.info("turn_ms=%d trace_id=%s", (time.perf_counter() - started) * 1000, trace.trace_id)
+        turn_ms = int((time.perf_counter() - started) * 1000)
+        logger.info("turn_ms=%d trace_id=%s", turn_ms, trace.trace_id)
+        tracing.record_turn(
+            trace,
+            decision=decision,
+            retrieved=retrieved,
+            embed_cache=(
+                (embed_stats.hits - embed_before[0], embed_stats.misses - embed_before[1])
+                if embed_stats and embed_before
+                else None
+            ),
+            tool_calls=result.tool_calls,
+            report=report,
+            turn_ms=turn_ms,
+        )
         return ChatResult(
             text=final,
             trace=result.tool_calls,

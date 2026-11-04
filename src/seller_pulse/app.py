@@ -34,8 +34,9 @@ def build_app(settings: Settings | None = None) -> gr.Blocks:
         if settings.caching
         else None
     )
+    embed_stats = CacheStats() if embed_cache else None
     retriever = build_retriever(  # one Chroma client for the process
-        settings, embed_cache=embed_cache, stats=CacheStats() if embed_cache else None
+        settings, embed_cache=embed_cache, stats=embed_stats
     )
     store = PreferenceStore(settings.memory_path, settings.seller_id)
     # Analytics over stdio MCP (fails loudly at startup); memory tools stay in-process.
@@ -65,6 +66,7 @@ def build_app(settings: Settings | None = None) -> gr.Blocks:
             store=store,
             fallback=fallback,
             tracing=tracing,
+            embed_stats=embed_stats,
             session_id=request.session_hash if request else None,
         )
         return result.text, render_trace(result), render_badges(result)
