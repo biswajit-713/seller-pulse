@@ -1,0 +1,117 @@
+{
+  "traceId": "e2d04a241ee5dd462a5388ae2df70393",
+  "scenario": "sales question repeated: cache hit",
+  "source": "Langfuse v2 observations + v3 scores API, LLM generations omitted",
+  "observations": [
+    {
+      "name": "turn",
+      "type": "SPAN",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "parentObservationId": "5c10d3380c4dabf4",
+      "input": null,
+      "metadata": {
+        "turn_ms": 33060
+      }
+    },
+    {
+      "name": "retrieval",
+      "type": "RETRIEVER",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "parentObservationId": "4869dd46c4337e43",
+      "input": null,
+      "metadata": {
+        "embed_cache_misses": 0,
+        "embed_cache_hits": 2,
+        "hits": [
+          {
+            "id": "REV-557",
+            "distance": 0.6943455338478088
+          },
+          {
+            "id": "REV-513",
+            "distance": 0.7079392671585083
+          },
+          {
+            "id": "REV-570",
+            "distance": 0.7155181169509888
+          },
+          {
+            "id": "REV-546",
+            "distance": 0.7175838351249695
+          },
+          {
+            "id": "REV-561",
+            "distance": 0.7208809852600098
+          },
+          {
+            "id": "REV-502",
+            "distance": 0.7225275635719299
+          },
+          {
+            "id": "pol-3",
+            "distance": 0.6724337339401245
+          },
+          {
+            "id": "pol-2a",
+            "distance": 0.7246360778808594
+          }
+        ],
+        "stats": false,
+        "count": 8,
+        "mode": "general"
+      }
+    },
+    {
+      "name": "route",
+      "type": "SPAN",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "parentObservationId": "4869dd46c4337e43",
+      "input": null,
+      "metadata": {
+        "latency_ms": 578,
+        "fallback": false,
+        "routes": [
+          "data"
+        ]
+      }
+    },
+    {
+      "name": "get_sales_analytics",
+      "type": "TOOL",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "parentObservationId": "4869dd46c4337e43",
+      "input": "{\"period\": \"last_week\"}",
+      "metadata": {
+        "latency_ms": 1,
+        "cached": true,
+        "ok": true
+      }
+    },
+    {
+      "name": "guardrail",
+      "type": "GUARDRAIL",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "parentObservationId": "4869dd46c4337e43",
+      "input": null,
+      "metadata": {
+        "policy_clauses": [],
+        "policy_refusal": false,
+        "publish_claim": false,
+        "draft_pending": false,
+        "ungrounded_ids": [],
+        "unverified_figures": [],
+        "triggered": false
+      }
+    }
+  ],
+  "scores": {
+    "guardrail_triggered": 0,
+    "tool_calls": 1,
+    "tool_failures": 0
+  }
+}

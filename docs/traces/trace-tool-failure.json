@@ -1,0 +1,118 @@
+{
+  "traceId": "689eb94e23f18ce2114397c3d00bb1a0",
+  "scenario": "bad SKU-9999: UNKNOWN_SKU tool failure",
+  "source": "Langfuse v2 observations + v3 scores API, LLM generations omitted",
+  "observations": [
+    {
+      "name": "turn",
+      "type": "SPAN",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "parentObservationId": "779f10fa97594e4b",
+      "input": null,
+      "metadata": {
+        "turn_ms": 68195
+      }
+    },
+    {
+      "name": "route",
+      "type": "SPAN",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "parentObservationId": "1d48bef2087fc7f4",
+      "input": null,
+      "metadata": {
+        "latency_ms": 676,
+        "fallback": false,
+        "routes": [
+          "data"
+        ]
+      }
+    },
+    {
+      "name": "retrieval",
+      "type": "RETRIEVER",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "parentObservationId": "1d48bef2087fc7f4",
+      "input": null,
+      "metadata": {
+        "embed_cache_misses": 1,
+        "embed_cache_hits": 1,
+        "hits": [
+          {
+            "id": "REV-533",
+            "distance": 0.7136056423187256
+          },
+          {
+            "id": "REV-505",
+            "distance": 0.7266942858695984
+          },
+          {
+            "id": "REV-567",
+            "distance": 0.7701343297958374
+          },
+          {
+            "id": "REV-511",
+            "distance": 0.7848788499832153
+          },
+          {
+            "id": "REV-610",
+            "distance": 0.7875642776489258
+          },
+          {
+            "id": "REV-561",
+            "distance": 0.7957533597946167
+          },
+          {
+            "id": "pol-3",
+            "distance": 0.6688541769981384
+          },
+          {
+            "id": "pol-1",
+            "distance": 0.7026242017745972
+          }
+        ],
+        "stats": false,
+        "count": 8,
+        "mode": "general"
+      }
+    },
+    {
+      "name": "guardrail",
+      "type": "GUARDRAIL",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "parentObservationId": "1d48bef2087fc7f4",
+      "input": null,
+      "metadata": {
+        "policy_clauses": [],
+        "policy_refusal": false,
+        "publish_claim": false,
+        "draft_pending": false,
+        "ungrounded_ids": [],
+        "unverified_figures": [],
+        "triggered": false
+      }
+    },
+    {
+      "name": "check_inventory_status",
+      "type": "TOOL",
+      "level": "ERROR",
+      "statusMessage": "tool failed: UNKNOWN_SKU",
+      "parentObservationId": "1d48bef2087fc7f4",
+      "input": "{\"sku\": \"SKU-9999\"}",
+      "metadata": {
+        "latency_ms": 595,
+        "cached": false,
+        "error_code": "UNKNOWN_SKU",
+        "ok": false
+      }
+    }
+  ],
+  "scores": {
+    "tool_failures": 1,
+    "guardrail_triggered": 0,
+    "tool_calls": 1
+  }
+}

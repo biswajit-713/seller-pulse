@@ -1,0 +1,107 @@
+{
+  "traceId": "645bbce3665f905a20b12c966826af58",
+  "scenario": "policy question SQ-06: guardrail refusal",
+  "source": "Langfuse v2 observations + v3 scores API, LLM generations omitted",
+  "observations": [
+    {
+      "name": "turn",
+      "type": "SPAN",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "parentObservationId": "1001f5c0326e8aa3",
+      "input": null,
+      "metadata": {
+        "turn_ms": 31526
+      }
+    },
+    {
+      "name": "retrieval",
+      "type": "RETRIEVER",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "parentObservationId": "f526255e36964c75",
+      "input": null,
+      "metadata": {
+        "embed_cache_misses": 1,
+        "embed_cache_hits": 1,
+        "hits": [
+          {
+            "id": "REV-571",
+            "distance": 0.8083754181861877
+          },
+          {
+            "id": "REV-557",
+            "distance": 0.8327418565750122
+          },
+          {
+            "id": "REV-588",
+            "distance": 0.8434712290763855
+          },
+          {
+            "id": "REV-540",
+            "distance": 0.8453786373138428
+          },
+          {
+            "id": "REV-546",
+            "distance": 0.8476690649986267
+          },
+          {
+            "id": "REV-520",
+            "distance": 0.8626687526702881
+          },
+          {
+            "id": "pol-2a",
+            "distance": 0.28814148902893066
+          },
+          {
+            "id": "pol-2b",
+            "distance": 0.5118347406387329
+          }
+        ],
+        "stats": false,
+        "count": 8,
+        "mode": "general"
+      }
+    },
+    {
+      "name": "route",
+      "type": "SPAN",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "parentObservationId": "f526255e36964c75",
+      "input": null,
+      "metadata": {
+        "latency_ms": 1087,
+        "fallback": false,
+        "routes": [
+          "policy"
+        ]
+      }
+    },
+    {
+      "name": "guardrail",
+      "type": "GUARDRAIL",
+      "level": "DEFAULT",
+      "statusMessage": "",
+      "parentObservationId": "f526255e36964c75",
+      "input": null,
+      "metadata": {
+        "policy_clauses": [
+          "pol-2a",
+          "pol-2b"
+        ],
+        "policy_refusal": true,
+        "publish_claim": false,
+        "draft_pending": false,
+        "ungrounded_ids": [],
+        "unverified_figures": [],
+        "triggered": true
+      }
+    }
+  ],
+  "scores": {
+    "guardrail_triggered": 1,
+    "tool_failures": 0,
+    "tool_calls": 0
+  }
+}
