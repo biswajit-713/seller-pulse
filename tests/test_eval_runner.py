@@ -1,3 +1,4 @@
+import dataclasses
 import json
 
 import pytest
@@ -158,6 +159,30 @@ async def test_run_case_passes_only_when_no_dimension_fails():
     assert not run.passed
 
 
+async def test_memory_case_gets_a_seeded_store_and_memory_tools(monkeypatch):
+    seen = {}
+
+    async def fake_respond(message, history, *, tools, store, **kwargs):
+        seen.update(history=history, tools=[t.name for t in tools], prefs=store.get_all() if store else None)
+        return await real_respond(message, history, tools=tools, store=store, **kwargs)
+
+    real_respond = agent_eval.respond
+    monkeypatch.setattr(agent_eval, "respond", fake_respond)
+    turns = ({"role": "user", "content": "earlier"},)
+    case = dataclasses.replace(
+        _case(), history=turns, preferences=(("restock_threshold", "5"), ("restock_threshold", "3"))
+    )
+    await run_case(case, _pipeline(["Done."]))
+    assert seen["history"] == list(turns)
+    assert {"save_preference", "list_preferences"} <= set(seen["tools"])
+    pref = seen["prefs"]["restock_threshold"]
+    assert (pref.value, pref.previous_value) == ("3", "5")
+
+    seen.clear()
+    await run_case(_case(), _pipeline(["Done."]))  # a non-memory case: no store, no memory tools
+    assert seen["prefs"] is None and "save_preference" not in seen["tools"]
+
+
 async def test_ungrounded_id_fails_case_with_passing_judge():
     run = await run_case(_case(), _pipeline(["SKU-4242 is your best seller."]))
     assert run.groundedness.ungrounded_ids == ["SKU-4242"]
@@ -288,3 +313,71 @@ def test_missing_api_key_is_exit_2(monkeypatch, capsys):
 def test_summary_system_prompt_tokens_mean_and_max():
     runs = [_run(_case("AE-01"), ALL_PASS, 1000), _run(_case("AE-02"), ALL_PASS, 2001)]
     assert summarize(runs)["system_prompt_tokens"] == {"mean": 1500, "max": 2001}
+
+
+# --- rate limiting + resume
+
+
+@pytest.fixture
+def no_sleep(monkeypatch):
+    async def instant(_seconds):
+        return None
+
+    monkeypatch.setattr(agent_eval.asyncio, "sleep", instant)
+
+
+def _limited_harness(monkeypatch, replies):
+    cases = [_case(f"AE-{i:02d}", checks=[{"kind": "contains_all", "needles": ["fine"]}]) for i in range(1, 5)]
+    monkeypatch.setattr(agent_eval, "load_settings", lambda: SETTINGS)
+    monkeypatch.setattr(agent_eval, "load_cases", lambda: cases)
+    monkeypatch.setattr(agent_eval, "build_pipeline", lambda settings: _pipeline(replies))
+    monkeypatch.setattr(agent_eval, "CASE_DELAY_S", 0)
+
+
+def test_rate_limited_case_retries_then_scores(monkeypatch, tmp_path, no_sleep, capsys):
+    from seller_pulse.chat import RATE_LIMITED_REPLY
+
+    monkeypatch.setattr(agent_eval, "REPORTS_DIR", tmp_path / "reports")
+    _limited_harness(monkeypatch, [RATE_LIMITED_REPLY, "All fine.", "All fine.", "All fine.", "All fine."])
+    assert agent_eval.main(["--no-report"]) == 0
+    assert "retrying" in capsys.readouterr().out
+
+
+def test_persistent_rate_limit_is_unscored_exit_2_and_stops_after_streak(monkeypatch, tmp_path, no_sleep, capsys):
+    from seller_pulse.chat import RATE_LIMITED_REPLY
+
+    reports = tmp_path / "reports"
+    monkeypatch.setattr(agent_eval, "REPORTS_DIR", reports)
+    # AE-01 fine; AE-02 and AE-03 limited through their retry; AE-04 is skipped by the streak rule.
+    _limited_harness(monkeypatch, ["All fine."] + [RATE_LIMITED_REPLY] * 4 + ["All fine."])
+    assert agent_eval.main([]) == 2
+    [path] = reports.glob("*.json")
+    report = json.loads(path.read_text())
+    assert report["rate_limited"] == ["AE-02", "AE-03", "AE-04"]
+    assert [c["id"] for c in report["cases"]] == ["AE-01"]
+    assert report["score"] == {"passed": 1, "scored": 1, "rate": 1.0}
+    assert "--resume" in capsys.readouterr().out
+
+
+def test_resume_runs_only_missing_cases_and_merges(monkeypatch, tmp_path, no_sleep):
+    from seller_pulse.chat import RATE_LIMITED_REPLY
+
+    reports = tmp_path / "reports"
+    monkeypatch.setattr(agent_eval, "REPORTS_DIR", reports)
+    _limited_harness(monkeypatch, ["All fine."] + [RATE_LIMITED_REPLY] * 4)
+    assert agent_eval.main([]) == 2
+    [first] = reports.glob("*.json")
+
+    _limited_harness(monkeypatch, ["All fine."] * 3)  # exactly the three unscored cases
+    monkeypatch.setattr(agent_eval, "REPORTS_DIR", tmp_path / "reports2")
+    assert agent_eval.main(["--resume", str(first)]) == 0
+    [second] = (tmp_path / "reports2").glob("*.json")
+    report = json.loads(second.read_text())
+    assert [c["id"] for c in report["cases"]] == ["AE-01", "AE-02", "AE-03", "AE-04"]
+    assert report["rate_limited"] == []
+    assert report["score"] == {"passed": 4, "scored": 4, "rate": 1.0}
+
+
+def test_resume_with_unreadable_report_is_exit_2(monkeypatch, tmp_path):
+    _limited_harness(monkeypatch, [])
+    assert agent_eval.main(["--resume", str(tmp_path / "missing.json"), "--no-report"]) == 2

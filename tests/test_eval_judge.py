@@ -96,3 +96,31 @@ async def test_unparseable_output_becomes_failing_verdict():
     verdict = await judge(FakeJudgeModel(None), RUBRIC, ATTEMPT)
     assert verdict.judge_error
     assert verdict.grounded.result == "fail"
+
+
+class _FlakyJudge:
+    """Fails with a malformed-tool-call error `fails` times, then returns CANNED."""
+
+    def __init__(self, fails: int) -> None:
+        self.fails, self.calls = fails, 0
+
+    def with_structured_output(self, schema):
+        return self
+
+    async def ainvoke(self, messages):
+        self.calls += 1
+        if self.calls <= self.fails:
+            raise RuntimeError("400 tool call validation failed: missing 'points'")
+        return CANNED
+
+
+async def test_transient_judge_error_is_retried():
+    model = _FlakyJudge(fails=2)
+    verdict = await judge(model, RUBRIC, ATTEMPT, retry_delay_s=0)
+    assert verdict == CANNED and model.calls == 2 + 1
+
+
+async def test_persistent_judge_error_still_a_judge_error_after_retries():
+    model = _FlakyJudge(fails=99)
+    verdict = await judge(model, RUBRIC, ATTEMPT, retry_delay_s=0)
+    assert verdict.judge_error and model.calls == 3

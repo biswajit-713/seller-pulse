@@ -18,6 +18,7 @@ from seller_pulse.config import DATA_DIR
 from seller_pulse.evals.checks import run_checks
 from seller_pulse.evals.faults import Fault, parse_fault
 from seller_pulse.evals.judge import Rubric
+from seller_pulse.memory import PREFERENCE_KEYS
 from seller_pulse.evals.retrieval_eval import DEFAULT_QUERIES_PATH, HarnessError
 from seller_pulse.router import ROUTE_TOOLS
 
@@ -43,6 +44,11 @@ class AgentCase:
     notes: str | None
     groundedness_allow: tuple[str, ...] = ()
     fault: Fault | None = None
+    # Memory cases: prior turns the case continues, and the preferences already saved, applied in
+    # order (so a later value records the earlier one as `previous_value`). `None` = no store,
+    # no memory tools (every non-memory case); `()` = an empty store with the memory tools.
+    history: tuple[dict[str, str], ...] = ()
+    preferences: tuple[tuple[str, str], ...] | None = None
 
     @property
     def scored(self) -> bool:
@@ -109,6 +115,29 @@ def _fault(raw: dict, where: str) -> Fault | None:
     return fault
 
 
+def _history(raw: dict, where: str) -> tuple[dict[str, str], ...]:
+    history = raw.get("history", [])
+    ok = isinstance(history, list) and all(
+        isinstance(t, dict) and t.get("role") in ("user", "assistant") and isinstance(t.get("content"), str)
+        for t in history
+    )
+    if not ok:
+        raise HarnessError(f"{where}: history needs a list of {{role: user|assistant, content}} turns: {history!r}")
+    return tuple({"role": t["role"], "content": t["content"]} for t in history)
+
+
+def _preferences(raw: dict, where: str) -> tuple[tuple[str, str], ...] | None:
+    if "preferences" not in raw:
+        return None
+    prefs = raw["preferences"]
+    ok = isinstance(prefs, list) and all(
+        isinstance(p, list) and len(p) == 2 and p[0] in PREFERENCE_KEYS and isinstance(p[1], str) for p in prefs
+    )
+    if not ok:
+        raise HarnessError(f"{where}: preferences needs [key, value] pairs, key one of {PREFERENCE_KEYS}: {prefs!r}")
+    return tuple((k, v) for k, v in prefs)
+
+
 def load_cases(
     cases_path: Path = DEFAULT_AGENT_CASES_PATH, queries_path: Path = DEFAULT_QUERIES_PATH
 ) -> list[AgentCase]:
@@ -150,6 +179,8 @@ def load_cases(
                 notes=query.get("notes"),
                 groundedness_allow=_allow_values(raw, where),
                 fault=_fault(raw, where),
+                history=_history(raw, where),
+                preferences=_preferences(raw, where),
             )
         )
     return cases

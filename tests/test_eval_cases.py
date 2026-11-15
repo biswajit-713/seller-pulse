@@ -60,6 +60,21 @@ def test_groundedness_allow_values(tmp_path):
     assert case.groundedness_allow == ("21",)
 
 
+def test_memory_setup_defaults_to_none(tmp_path):
+    [case] = load_cases(*_write(tmp_path, [CASE]))
+    assert case.preferences is None and case.history == ()
+
+
+def test_memory_setup_is_read(tmp_path):
+    turns = [{"role": "user", "content": "hi"}, {"role": "assistant", "content": "hello"}]
+    raw = _case(history=turns, preferences=[["restock_threshold", "5"], ["restock_threshold", "3"]])
+    [case] = load_cases(*_write(tmp_path, [raw]))
+    assert case.history == tuple(turns)
+    assert case.preferences == (("restock_threshold", "5"), ("restock_threshold", "3"))
+    [empty] = load_cases(*_write(tmp_path, [_case(preferences=[])]))
+    assert empty.preferences == ()  # an empty store with memory tools, not "no store"
+
+
 @pytest.mark.parametrize(
     "cases, message",
     [
@@ -72,6 +87,9 @@ def test_groundedness_allow_values(tmp_path):
         ([_case(checks=[{"kind": "contains_all"}])], "malformed check"),
         ([_case(checks=[{"kind": "contains_all", "needles": ["x"], "dimension": "behavior"}])], "malformed check"),
         ([_case(groundedness_allow=["21"])], "groundedness_allow"),
+        ([_case(preferences=[["favourite_colour", "red"]])], "preferences"),
+        ([_case(preferences=[["reply_tone"]])], "preferences"),
+        ([_case(history=[{"role": "system", "content": "x"}])], "history"),
         ([{k: v for k, v in CASE.items() if k != "must"}], "missing"),
         ([_case(must=[])], "must"),
         ([_case(must="States the window.")], "must"),
@@ -87,6 +105,6 @@ def test_bad_case_file_raises_harness_error(tmp_path, cases, message):
 
 def test_real_case_file_loads():
     cases = load_cases()
-    assert len(cases) == 21
-    assert sum(c.scored for c in cases) == 17
+    assert len(cases) == 37  # one per synthetic query
+    assert sum(c.scored for c in cases) == 33
     assert DEFAULT_AGENT_CASES_PATH.exists()

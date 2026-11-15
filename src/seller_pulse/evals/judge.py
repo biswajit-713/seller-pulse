@@ -18,6 +18,7 @@ fails `grounded` on a `fabricated` or missing suspect.
 judge error never raises — it comes back as an all-`fail` verdict with `judge_error=True`.
 """
 
+import asyncio
 import json
 from dataclasses import dataclass
 from typing import Literal
@@ -151,11 +152,23 @@ def _error_verdict(message: str) -> Verdict:
     return Verdict(suspects=[], points=[], accuracy=failed, grounded=failed, judge_error=True)
 
 
-async def judge(model: BaseChatModel, rubric: Rubric, attempt: Attempt) -> Verdict:
-    try:
-        verdict = await model.with_structured_output(Verdict).ainvoke(build_messages(rubric, attempt))
-    except Exception as exc:
-        return _error_verdict(f"{type(exc).__name__}: {exc}")
-    if not isinstance(verdict, Verdict):
-        return _error_verdict(f"unparseable output: {verdict!r}")
-    return verdict
+JUDGE_ATTEMPTS = 3  # the judge model sometimes emits a malformed `Verdict` tool call (400); retry
+JUDGE_RETRY_DELAY_S = 2.0
+
+
+async def judge(
+    model: BaseChatModel, rubric: Rubric, attempt: Attempt, *, retry_delay_s: float = JUDGE_RETRY_DELAY_S
+) -> Verdict:
+    messages = build_messages(rubric, attempt)
+    for n in range(JUDGE_ATTEMPTS):
+        if n:
+            await asyncio.sleep(retry_delay_s)
+        try:
+            verdict = await model.with_structured_output(Verdict).ainvoke(messages)
+        except Exception as exc:
+            error = _error_verdict(f"{type(exc).__name__}: {exc}")
+            continue
+        if isinstance(verdict, Verdict):
+            return verdict
+        error = _error_verdict(f"unparseable output: {verdict!r}")
+    return error

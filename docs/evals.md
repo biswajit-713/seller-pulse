@@ -39,7 +39,7 @@ unclassified suspect fails.
 first choices, are no longer on Groq. It sees the same retrieved context the agent got. Agent
 and judge both run at temperature 0, in the eval only.
 
-**Threshold:** 80% of scored cases (14/17). Known-gap cases run and are reported but don't
+**Threshold:** 80% of scored cases. Known-gap cases run and are reported but don't
 count. Dimension and bucket rates are diagnostic.
 
 ## Cases
@@ -69,8 +69,35 @@ count. Dimension and bucket rates are diagnostic.
 | AE-19 | SQ-24 — low-stock list, inventory tool times out | fault | known_gap |
 | AE-20 | SQ-37 — sales today, `today` call times out | fault | scored |
 | AE-21 | SQ-35 — top product by revenue this month (`get_top_products`) | sales | scored |
+| AE-22 | SQ-02 — why is Boho Wall Hanging underperforming (ambiguous name) | rag_draft | scored |
+| AE-23 | SQ-04 — low-stock products (`list_low_stock`) | inventory | scored |
+| AE-24 | SQ-05 — notify me every Friday (memory write) | memory | scored |
+| AE-25 | SQ-07 — zero stock but still taking orders | inventory | scored |
+| AE-26 | SQ-08 — best-selling product (units and revenue) | sales | scored |
+| AE-27 | SQ-11 — top category by revenue | sales | scored |
+| AE-28 | SQ-16 — reply-tone preference (memory write) | memory | scored |
+| AE-29 | SQ-19 — products with no reviews (`get_review_summary`) | rag_draft | scored |
+| AE-30 | SQ-22 — restock threshold unset → 3 (memory update, seeded prior turn) | memory | scored |
+| AE-31 | SQ-23 — restock reminder, internal | inventory | scored |
+| AE-32 | SQ-26 — what to stop restocking | inventory | scored |
+| AE-33 | SQ-27 — listings with no sales this month | inventory | scored |
+| AE-34 | SQ-28 — policy audit | guardrail | scored |
+| AE-35 | SQ-32 — rewrite description around size complaints | rag_draft | scored |
+| AE-36 | SQ-33 — saved preferences (memory read, seeded store) | memory | scored |
+| AE-37 | SQ-36 — what to restock first (saved threshold applied) | memory | scored |
 
-Not in the file: memory, catalogue-wide inventory, category sales.
+All 37 synthetic queries are covered. AE-22…AE-37 (W4-01) added the ones that were left out
+until the catalogue-wide tools (`list_low_stock`, `get_stock_velocity`, `get_top_products`
+by category, `get_review_summary`) and the memory tools existed.
+
+### Memory cases
+
+A case with a `preferences` key (even `[]`) runs against a throwaway `PreferenceStore` with
+the memory tools bound and recall on; every other case still runs with no store. `preferences`
+is a list of `[key, value]` pairs applied in order, so a later value records the earlier one as
+`previous_value` (AE-36/AE-37 seed 5 then 3). `history` holds prior turns the case continues
+(AE-30 follows SQ-05). Both are fixed in the case file, not produced by an earlier live turn,
+so a case never depends on another case's outcome.
 
 ### Fault injection
 
@@ -94,12 +121,23 @@ The report records each case's `fault`.
 |---|---|
 | `0` | Scored pass rate ≥ 80%. |
 | `1` | Ran, but below threshold. |
-| `2` | Could not run: no `GROQ_API_KEY`, empty store, malformed case file, unknown `--case`, or an agent/Groq error mid-run (e.g. the 200k tokens/day cap). |
+| `2` | Could not run: no `GROQ_API_KEY`, empty store, malformed case file, unknown `--case`, an agent/Groq error mid-run, or any case left unscored by rate limiting (below). |
+
+### Rate limits and `--resume`
+
+A Groq 429 is not a failure. The case is retried once after 65 s; if it is still limited it is
+**unscored** — listed under `rate_limited` in the report, outside the pass rate. Two limited
+cases in a row mean the quota is spent, so the rest of the run is left unscored too, and the
+run exits 2. Finish it with `--resume <report>`: only cases the report doesn't hold are run, and
+the new report merges both, so a baseline can be built over several quota windows. Prior
+cases are carried over as recorded, not re-judged.
 
 Cases are paced 20 s apart (`--delay`) to stay under Groq's per-minute limit. A full run uses
 a large share of the agent model's daily token budget. Unrecognised flags are ignored, so
 `--help` starts a full run. Reports are written to
 `evals/reports/<YYYYMMDDTHHMMSS>-<shortsha>.json` unless `--no-report`.
+
+A judge call that errors (typically the judge model emitting a malformed `Verdict` tool call, a 400) is retried 3 times; if it still errors the case is treated like a rate-limited one — retried after the backoff, then left unscored under `rate_limited` — rather than scored FAIL.
 
 ## Baseline (2026-10-13)
 

@@ -63,12 +63,14 @@ note), and `SQ-05`/`SQ-22` (threshold set, then changed).
 
 | Field | Meaning |
 |---|---|
-| `id` | `AE-01` … `AE-18` |
+| `id` | `AE-01` … `AE-37` |
 | `source_query` | the `SQ-` id in `queries.jsonl` |
 | `status` | `scored` (counts toward the 80% threshold) or `known_gap` (runs and is reported, not scored) |
 | `bucket` | `sales` \| `guardrail` \| `rag_draft` — for per-bucket rates |
 | `checks` | deterministic checks — see below; empty means judge-only, and `why` says so |
 | `groundedness_allow` | optional — values legitimately absent from every source, each with a `why` |
+| `preferences` | optional — `[key, value]` pairs seeded into a throwaway preference store, with the memory tools bound; `[]` = empty store. Absent = no store |
+| `history` | optional — earlier `{role, content}` turns the case continues |
 | `why` | one line: what the case proves (for `known_gap`, the missing capability) |
 
 Check kinds: `tool_called` (≥1 call to `name`; each listed `args` value must be in its accepted

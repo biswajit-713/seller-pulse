@@ -1,6 +1,6 @@
 """The live agent eval (ev-05): run each case through the real pipeline, score it, report.
 
-    uv run python -m seller_pulse.evals.agent_eval [--case AE-03 ...] [--delay SECONDS] [--json] [--no-report]
+    uv run python -m seller_pulse.evals.agent_eval [--case AE-03 ...] [--delay SECONDS] [--resume REPORT] [--json] [--no-report]
 
 Live, never a pytest test: it needs `GROQ_API_KEY` and the ingested store. The agent runs
 through the same `chat.respond` the app uses — no parallel copy of the pipeline. Cases run
@@ -15,6 +15,13 @@ rates are diagnostic only.
 Exit codes mirror `evals/retrieval_eval.py`: 0 at or above the threshold, 1 below, 2 the eval could not
 run (no API key, empty store, malformed case file, unknown `--case`, the agent call raised).
 A mid-run agent error is exit 2, not a failed case — an outage is not a score.
+
+A Groq 429 is the same: the case is retried after a backoff, and if it is still limited it is
+left *unscored* (listed under `rate_limited` in the report, outside the pass rate), never a
+FAIL. Two limited cases in a row mean the quota is spent, so the rest of the run is left
+unscored too. Any unscored case makes the exit code 2. `--resume REPORT` runs only the cases
+that report doesn't hold, and writes one merged report — so a quota-limited baseline can be
+finished over several runs.
 """
 
 import asyncio
@@ -22,9 +29,11 @@ import json
 import statistics
 import subprocess
 import sys
+import tempfile
 import time
 from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass
+from types import SimpleNamespace
 from datetime import datetime
 from fractions import Fraction
 from pathlib import Path
@@ -34,7 +43,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import BaseTool
 
 from seller_pulse.agent import ToolCallRecord
-from seller_pulse.chat import Classifier, respond
+from seller_pulse.chat import RATE_LIMITED_REPLY, Classifier, respond
 from seller_pulse.config import PROJECT_ROOT, Settings, load_settings
 from seller_pulse.evals.cases import AgentCase, load_cases
 from seller_pulse.evals.checks import CheckResult, Dimension, Groundedness, check_groundedness, run_checks
@@ -42,6 +51,7 @@ from seller_pulse.evals.faults import inject_fault
 from seller_pulse.evals.judge import Attempt, Verdict, judge
 from seller_pulse.llm.base import LLMClient
 from seller_pulse.llm.groq_client import GroqLLMClient
+from seller_pulse.memory import PreferenceStore
 from seller_pulse.prompts import build_system_prompt
 from seller_pulse.rag.context import render_context
 from seller_pulse.evals.retrieval_eval import HarnessError, check_store
@@ -49,15 +59,24 @@ from seller_pulse.rag.retrieval import Retriever, build_retriever
 from seller_pulse.rag.store import get_client, policy_collection, review_collection
 from seller_pulse.router import Route, build_classifier
 from seller_pulse.sanitize import sanitize
-from seller_pulse.tools import build_tools
+from seller_pulse.tools import build_memory_tools, build_tools
 
 PASS_THRESHOLD = 0.8
 TEMPERATURE = 0
 # Pause between cases so a full run stays under Groq's per-minute token limit. `--delay` overrides.
 CASE_DELAY_S = 20.0
+# A 429 is retried after this pause (Groq's per-minute window), up to RATE_LIMIT_RETRIES times.
+RATE_LIMIT_BACKOFF_S = 65.0
+RATE_LIMIT_RETRIES = 1
+# This many limited cases in a row means the daily quota is gone; stop rather than burn the rest.
+MAX_CONSECUTIVE_RATE_LIMITED = 2
 REPORTS_DIR = PROJECT_ROOT / "evals" / "reports"
 DIMENSIONS = tuple(Dimension)
 _MARK = {"pass": "✓", "fail": "✗", "n/a": "–"}
+
+
+class RateLimited(Exception):
+    """No score possible: the agent model answered 429 (no fallback did), or the judge kept erroring."""
 
 
 @dataclass(frozen=True)
@@ -69,6 +88,7 @@ class Pipeline:
     judge_model: BaseChatModel
     # Tokens in a string. o200k_base in a real run; injectable so tests needn't fetch the encoding.
     count_tokens: Callable[[str], int]
+    seller_id: str = "SELLER-001"
 
 
 @dataclass(frozen=True)
@@ -90,6 +110,27 @@ class CaseRun:
     @property
     def passed(self) -> bool:
         return "fail" not in self.dimensions.values()
+
+
+@dataclass(frozen=True)
+class PriorRun:
+    """A case already scored in an earlier report: just what `summarize` reads."""
+
+    case: SimpleNamespace  # scored, bucket
+    passed: bool
+    dimensions: dict[str, str]
+    latency_ms: int
+    system_prompt_tokens: int
+
+    @classmethod
+    def from_json(cls, raw: dict[str, Any]) -> "PriorRun":
+        return cls(
+            case=SimpleNamespace(scored=raw["status"] == "scored", bucket=raw["bucket"]),
+            passed=raw["passed"],
+            dimensions=raw["dimensions"],
+            latency_ms=raw["latency_ms"],
+            system_prompt_tokens=raw["system_prompt_tokens"],
+        )
 
 
 def _suspect_key(value: str) -> str:
@@ -132,17 +173,28 @@ def resolve_dimensions(
 
 async def run_case(case: AgentCase, pipeline: Pipeline) -> CaseRun:
     tools = inject_fault(pipeline.tools, case.fault) if case.fault else pipeline.tools
-    started = time.perf_counter()
-    result = await respond(
-        case.message,
-        None,
-        client=pipeline.client,
-        retriever=pipeline.retriever,
-        tools=tools,
-        classify=pipeline.classify,
-        store=None,  # no recall: cases must not depend on whatever the seller has saved
-    )
+    with tempfile.TemporaryDirectory() as memory_root:
+        # Memory cases get a throwaway store seeded from the case; every other case runs with no
+        # recall, so it can't depend on whatever the seller has really saved.
+        store = None
+        if case.preferences is not None:
+            store = PreferenceStore(Path(memory_root), pipeline.seller_id)
+            for key, value in case.preferences:
+                store.upsert(key, value)
+            tools = [*tools, *build_memory_tools(store)]
+        started = time.perf_counter()
+        result = await respond(
+            case.message,
+            list(case.history),
+            client=pipeline.client,
+            retriever=pipeline.retriever,
+            tools=tools,
+            classify=pipeline.classify,
+            store=store,
+        )
     latency_ms = round((time.perf_counter() - started) * 1000)
+    if result.text == RATE_LIMITED_REPLY:
+        raise RateLimited(case.id)
     # The same block `respond` put in the system prompt — retrieval is deterministic for a
     # fixed store. If that ever drifts, expose the context on `ChatResult` instead.
     retrieved_context = render_context(pipeline.retriever.retrieve(sanitize(case.message)))
@@ -161,6 +213,8 @@ async def run_case(case: AgentCase, pipeline: Pipeline) -> CaseRun:
         answer=result.text, trace=result.trace, retrieved_context=retrieved_context, suspects=grounding.suspects
     )
     verdict = await judge(pipeline.judge_model, case.rubric, attempt)
+    if verdict.judge_error:  # the answer was never judged — unscored, not a FAIL
+        raise RateLimited(case.id)
     return CaseRun(
         case=case,
         answer=result.text,
@@ -184,7 +238,7 @@ def _rate(passed: int, total: int) -> dict[str, Any]:
     return {"passed": passed, "total": total}
 
 
-def summarize(runs: list[CaseRun]) -> dict[str, Any]:
+def summarize(runs: Sequence[CaseRun | PriorRun]) -> dict[str, Any]:
     scored = [r for r in runs if r.case.scored]
     gaps = [r for r in runs if not r.case.scored]
     passed = sum(r.passed for r in scored)
@@ -262,7 +316,15 @@ def _git(*args: str) -> str:
     return out.stdout.strip()
 
 
-def build_report(runs: list[CaseRun], settings: Settings, run_at: datetime) -> dict[str, Any]:
+def build_report(
+    runs: list[CaseRun],
+    settings: Settings,
+    run_at: datetime,
+    prior: Sequence[dict[str, Any]] = (),
+    rate_limited: Sequence[str] = (),
+) -> dict[str, Any]:
+    """`prior` are case dicts carried over from a `--resume` report; `rate_limited` the unscored ids."""
+    cases = sorted([*prior, *(case_to_json(r) for r in runs)], key=lambda c: c["id"])
     return {
         "run_at": run_at.isoformat(timespec="seconds"),
         "git_sha": _git("rev-parse", "--short", "HEAD") or "unknown",
@@ -273,8 +335,9 @@ def build_report(runs: list[CaseRun], settings: Settings, run_at: datetime) -> d
         "judge_model": settings.judge_model,
         "temperature": TEMPERATURE,
         "threshold": PASS_THRESHOLD,
-        **summarize(runs),
-        "cases": [case_to_json(r) for r in runs],
+        **summarize([*(PriorRun.from_json(c) for c in prior), *runs]),
+        "rate_limited": list(rate_limited),
+        "cases": cases,
     }
 
 
@@ -353,6 +416,7 @@ def build_pipeline(settings: Settings) -> Pipeline:
         classify=build_classifier(settings),
         judge_model=judge_client.chat_model,
         count_tokens=_o200k_counter(),
+        seller_id=settings.seller_id,
     )
 
 
@@ -405,23 +469,67 @@ def _fail(message: str, json_mode: bool) -> int:
 
 
 async def run_eval(
-    cases: list[AgentCase], pipeline: Pipeline, *, json_mode: bool, delay_s: float = 0
-) -> list[CaseRun]:
-    runs = []
+    cases: list[AgentCase],
+    pipeline: Pipeline,
+    *,
+    json_mode: bool,
+    delay_s: float = 0,
+    backoff_s: float = RATE_LIMIT_BACKOFF_S,
+    retries: int = RATE_LIMIT_RETRIES,
+) -> tuple[list[CaseRun], list[str]]:
+    """Run `cases`; return the scored runs and the ids left unscored by rate limiting."""
+    runs: list[CaseRun] = []
+    limited: list[str] = []
+    streak = 0
     for i, case in enumerate(cases):
+        if streak >= MAX_CONSECUTIVE_RATE_LIMITED:
+            limited.append(case.id)  # quota is spent; don't burn time on the rest
+            continue
         if i and delay_s:
             # Outside run_case, so the pause never lands in a case's latency_ms.
             await asyncio.sleep(delay_s)
-        try:
-            run = await run_case(case, pipeline)
-        except Exception as exc:  # noqa: BLE001 - an agent/Groq error aborts the run (exit 2)
-            raise HarnessError(f"{case.id}: agent call failed: {type(exc).__name__}: {exc}") from exc
+        run = None
+        for attempt in range(retries + 1):
+            try:
+                run = await run_case(case, pipeline)
+                break
+            except RateLimited:
+                if attempt < retries:
+                    if not json_mode:
+                        print(f"{case.id}  rate limited, retrying in {backoff_s:g}s", flush=True)
+                    await asyncio.sleep(backoff_s)
+            except Exception as exc:  # noqa: BLE001 - an agent/Groq error aborts the run (exit 2)
+                raise HarnessError(f"{case.id}: agent call failed: {type(exc).__name__}: {exc}") from exc
+        if run is None:
+            streak += 1
+            limited.append(case.id)
+            if not json_mode:
+                print(f"{case.id}  UNSCORED (rate limited)\n")
+            continue
+        streak = 0
         if json_mode:
             print(json.dumps(case_to_json(run), ensure_ascii=False), flush=True)
         else:
             render(run)
         runs.append(run)
-    return runs
+    return runs, limited
+
+
+def _resume_path(argv: list[str]) -> Path | None:
+    if "--resume" not in argv:
+        return None
+    i = argv.index("--resume")
+    if i + 1 >= len(argv):
+        raise HarnessError("--resume needs a report path")
+    return Path(argv[i + 1])
+
+
+def load_prior(path: Path) -> list[dict[str, Any]]:
+    """The scored cases of an earlier report. Its `rate_limited` ones aren't in `cases`, so they re-run."""
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))["cases"]
+    except (OSError, ValueError, KeyError) as exc:
+        raise HarnessError(f"cannot resume from {path}: {exc}") from exc
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -433,6 +541,10 @@ def main(argv: list[str] | None = None) -> int:
         if not settings.groq_api_key:
             raise HarnessError("GROQ_API_KEY is not set — the agent eval calls Groq live")
         cases = select_cases(load_cases(), _case_filter(argv))
+        resume = _resume_path(argv)
+        prior = load_prior(resume) if resume else []
+        done = {c["id"] for c in prior}
+        cases = [c for c in cases if c.id not in done]
         delay_s = _delay(argv)
         pipeline = build_pipeline(settings)
     except Exception as exc:  # noqa: BLE001 - this boundary converts any setup failure to exit 2
@@ -444,23 +556,30 @@ def main(argv: list[str] | None = None) -> int:
         router = settings.router_model if settings.routing else "off"
         print(f"agent: {settings.groq_model}   router: {router}   "
               f"judge: {settings.judge_model}   temperature: {TEMPERATURE}")
-        print(f"cases: {len(cases)}   delay: {delay_s:g}s   run: {run_at.isoformat(timespec='seconds')}")
+        resumed = f"   resumed: {len(prior)} done" if prior else ""
+        print(f"cases: {len(cases)}   delay: {delay_s:g}s   run: {run_at.isoformat(timespec='seconds')}{resumed}")
         print()
         print("─" * 66)
 
     try:
-        runs = asyncio.run(run_eval(cases, pipeline, json_mode=json_mode, delay_s=delay_s))
+        runs, rate_limited = asyncio.run(run_eval(cases, pipeline, json_mode=json_mode, delay_s=delay_s))
     except HarnessError as exc:
         return _fail(f"agent eval aborted: {exc}", json_mode)
 
-    summary = summarize(runs)
+    summary = summarize([*(PriorRun.from_json(c) for c in prior), *runs])
     if not json_mode:
         print("─" * 66)
         render_footer(summary)
     if "--no-report" not in argv:
-        path = write_report(build_report(runs, settings, run_at), run_at)
+        path = write_report(build_report(runs, settings, run_at, prior, rate_limited), run_at)
+        shown = path.relative_to(PROJECT_ROOT) if path.is_relative_to(PROJECT_ROOT) else path
         if not json_mode:
-            print(f"report: {path.relative_to(PROJECT_ROOT) if path.is_relative_to(PROJECT_ROOT) else path}")
+            print(f"report: {shown}")
+            if rate_limited:
+                print(f"resume the rest with: --resume {shown}")
+    if rate_limited:
+        # Unscored cases are an incomplete run, not a pass or a fail.
+        return _fail(f"{len(rate_limited)} case(s) unscored (rate limited): {', '.join(rate_limited)}", json_mode)
 
     return 0 if meets_threshold(summary["score"]["passed"], summary["score"]["scored"]) else 1
 
