@@ -156,3 +156,36 @@ uv run python -m seller_pulse.evals.cache_live [--pace S] [--json PATH]
 Asks a fixed set of questions twice each and reports cold vs warm tool latency and hit rates.
 Live Groq calls; needs `GROQ_API_KEY` and an ingested store. Results in
 [`docs/caching.md`](docs/caching.md).
+
+# System design question
+System Design Questions for building Agent
+ 
+Is the problem feasible to solve using a LLM?
+Do I need to self host it or hit an external API?
+Agency vs control tradeoff
+Which model to use ?
+Structure of your prompt?
+How to configure the RAG?
+Embedding model
+Which vector DB to use?
+What is my knowledge base ?
+What is my chunking strategy?
+Is there any need for query rewriting and query classifications ?
+Which tools will I use
+Do I need MCP to connect to tools?
+Does this agent need memory (long term vs short term memory)
+What is retention and retrieval strategy
+What is guardrail strategy?
+What is caching strategy?
+Semantic cache vs normal cache
+TTL
+Cache system
+Do we need retrieval cache?
+Where does HITL come into play?
+How do we manage observability ?
+Which orchestration framework should I choose?
+Evals strategy?
+LLM as a judge
+Error analysis
+Evals by components
+What is my deployment strategy?

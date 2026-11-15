@@ -453,3 +453,35 @@ new `PreferenceStore` over the same path. Q5 and Q6 were re-run after a Groq 429
 
 **6 of 6 pass.** Q2 was fixed by adding the `find_listing` tool (name → SKU), Q4 by adding the
 `list_low_stock` tool (catalog-wide, `stock_qty <= threshold`); Q4 re-run live 2026-10-26.
+
+---
+
+# Week 4 edge cases (w4-10, #32) — 2026-11-15
+
+Live run through `chat.respond` with the app's wiring (stdio MCP analytics tools, router on, Groq
+`openai/gpt-oss-120b`, no memory store). Unit tests: `tests/test_agent_loop.py`
+(`test_hung_tool_times_out_and_loop_continues`, plain and ExceptionGroup-wrapped cancellation),
+`tests/test_find_listing.py` (`patio_cushion`), `tests/test_edge_cases.py` (empty retrieval, invented
+`REV-` id flagged).
+
+**Code changes.** `agent.py:_run_tool` now caps every tool call at `TOOL_TIMEOUT_S` (15 s) and returns a
+`TIMEOUT` envelope. The first live run showed the MCP adapter's task group turns the cancellation into an
+`ExceptionGroup`, so the deadline (`asyncio.timeout(...).expired()`), not the exception type, decides.
+`_DATA` gained a `TIMEOUT`/`TOOL_EXCEPTION` bullet, a "truncated → say more match" line for `find_listing`,
+and a rule not to take SKUs from the context block. Error envelopes are never cached (`cache.py` stores
+`ok: true` only).
+
+| Case | Trigger | Tool call / log | Answer | Result |
+|---|---|---|---|---|
+| Analytics timeout | "How did my sales perform last week?", `TOOL_TIMEOUT_S` forced to 0.01 s so the real wait expires on the MCP path | `get_sales_analytics` → `ok=False code=TIMEOUT ms=15` | "I couldn't retrieve the sales data for last week due to a timeout." No figure, no crash. | **Pass** (first run was `TOOL_EXCEPTION`, fixed) |
+| Ambiguous listing | "How many patio cushion covers do I have in stock?" (4 listings match; `find_listing` returns 3, `truncated: true`) | `check_inventory_status(SKU-1060)`, no `find_listing` call | Reports SKU-1060 only, no question asked | **Fail (open)** |
+| No catalog match | "How many Quantum Flux Capacitor units are in stock?" | `find_listing` → `UNKNOWN_LISTING` | "No listing matches “Quantum Flux Capacitor”. Provide more of the product name or the SKU (format SKU‑####)." Guardrail clean | **Pass** (first run echoed the prompt's example `SKU-1234`, guardrail flagged it; prompt reworded) |
+| No review match | "What do buyers say about my zebra-print lampshades?" | routes `['reviews']`, no tools, empty retrieval | "I don't have any buyer reviews for zebra-print lampshades in the available data." No `REV-` id | **Pass** |
+
+**Open: ambiguous listing.** The tool side is correct (`find_listing` returns candidates and the cap flag). The
+model never calls it: retrieval puts SKU-1060 reviews in the context block and the model uses that SKU
+directly. Two prompt rewordings did not change this on a re-run, so it is a model-behaviour gap, not a tool
+gap. Options: a deterministic check that a `check_inventory_status` SKU came from the seller or
+`find_listing`, or dropping reviews' SKUs from the context for `data`-only routes. Not done here.
+
+AE-18/19/20 were not re-run and the full eval was not run (prompt changed; run once with #29/#30).

@@ -145,9 +145,11 @@ no metric, `revenue`; say which window and metric you used. Quote each item's `u
 once with `group_by` set to `category` and `limit` 20; rank on the metric the seller asked about \
 (money = revenue), and never blend revenue and units.
 
-When the seller names a product rather than a SKU, call `find_listing` first, then use the \
-returned `sku` with `check_inventory_status`. If it returns several `matches`, list them and ask \
-which one the seller means; don't guess.
+When the seller names a product rather than a SKU, call `find_listing` first. SKUs in the \
+context block come from reviews and are not a catalog match: pass `check_inventory_status` only a \
+SKU the seller typed or `find_listing` returned. If it returns several `matches`, list them and ask \
+which one the seller means; don't guess. If `truncated` is true, say more listings match than are \
+shown and ask for more of the name.
 
 For "which products are low or out of stock", call `list_low_stock` once — never loop \
 `check_inventory_status` over SKUs. Use the seller's saved `restock_threshold` as `threshold`; \
@@ -187,11 +189,13 @@ substitute zero, an estimate, or a figure from elsewhere:
 date with data from the error message and offer to report on a window that has data.
 - `INVALID_PERIOD`: say which time range you couldn't understand and suggest a supported one \
 ("last week", or a date range). Don't guess a window.
-- `INVALID_SKU`: ask for the SKU code (form SKU-1234). If the seller gave a product name, call \
+- `INVALID_SKU`: ask for the SKU code (the word SKU, a hyphen, then digits). If the seller gave a product name, call \
 `find_listing` with it instead.
 - `UNKNOWN_SKU`: say that SKU isn't in their catalog and ask them to check the code.
 - `UNKNOWN_LISTING` / `INVALID_NAME`: say no listing matched that name and ask for more of the \
-name or the SKU.
+name or the SKU (the word SKU, a hyphen, then digits); write no example SKU.
+- `TIMEOUT` / `TOOL_EXCEPTION`: say the data is unavailable right now and suggest trying again \
+shortly. Give no figure for what was asked.
 - `INVALID_THRESHOLD`: ask for a stock level of 0 or more."""
 
 _REVIEWS = """\

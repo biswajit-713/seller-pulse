@@ -35,3 +35,9 @@ def test_too_short_is_invalid_name(name):
 
 def test_other_tenant_sees_unknown_listing():
     assert find_listing("SELLER-999", "Boho Wall Hanging")["error"]["code"] == "UNKNOWN_LISTING"
+
+
+def test_patio_cushion_is_ambiguous_and_flags_the_cap():
+    result = find_listing(SELLER, "patio cushion")
+    assert result["ok"] and _skus(result) == ["SKU-1050", "SKU-1060", "SKU-1070"]
+    assert result["data"]["truncated"] is True  # a fourth listing matches but is not shown

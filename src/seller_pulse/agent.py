@@ -3,11 +3,12 @@
 Plain loop, no LangGraph. Async because MCP adapter tools are async-only; local
 `StructuredTool`s support `ainvoke` too.
 
-Tool failures (exception, unknown name) are fed back to the model as an error envelope rather
+Tool failures (exception, timeout, unknown name) are fed back to the model as an error envelope rather
 than raised — the model decides how to degrade. Every call, failed or not, is recorded in
 `AgentResult.tool_calls` so the answer and the trace panel share one source of truth.
 """
 
+import asyncio
 import json
 import time
 from dataclasses import dataclass
@@ -22,6 +23,10 @@ from seller_pulse.llm.base import Message
 
 # A provider's 429 (Groq, or OpenRouter via the OpenAI SDK): the only error the fallback model covers.
 RATE_LIMIT_ERRORS = (groq.RateLimitError, openai.RateLimitError)
+
+# Wall-clock cap on one tool call. The MCP path spawns a server subprocess per call, so a hung
+# server would otherwise hang the turn. Normal calls finish in a second or two.
+TOOL_TIMEOUT_S = 15.0
 
 FALLBACK_TEXT = (
     "I couldn't finish pulling the data for that question. "
@@ -61,8 +66,13 @@ async def _run_tool(tools_by_name: dict[str, BaseTool], name: str, args: dict) -
     if tool is None:
         return _error("UNKNOWN_TOOL", f"No tool named {name!r}.")
     try:
-        return await tool.ainvoke(args)
+        async with asyncio.timeout(TOOL_TIMEOUT_S) as deadline:
+            return await tool.ainvoke(args)
     except Exception as exc:
+        # The MCP adapter's task group re-raises a cancellation as an ExceptionGroup, so the
+        # deadline, not the exception type, says whether this was a timeout.
+        if isinstance(exc, TimeoutError) or deadline.expired():
+            return _error("TIMEOUT", f"{name} did not return within {TOOL_TIMEOUT_S:g}s. No data was retrieved.")
         return _error("TOOL_EXCEPTION", f"{type(exc).__name__}: {exc}")
 
 

@@ -1,8 +1,11 @@
+import asyncio
 import dataclasses
 
+import pytest
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import StructuredTool
 
+from seller_pulse import agent as agent_module
 from seller_pulse.agent import FALLBACK_TEXT, ToolCallRecord, run_agent
 
 
@@ -203,3 +206,26 @@ async def test_callbacks_see_every_model_call():
     # The loop calls tools itself with `ainvoke` and no config: the handler sees model calls
     # only, so tool spans are added by hand (w4-04).
     assert recorder.tool_starts == 0
+
+
+@pytest.mark.parametrize("wrap_in_group", [False, True])
+async def test_hung_tool_times_out_and_loop_continues(monkeypatch, wrap_in_group):
+    async def hang(sku: str) -> dict:
+        try:
+            await asyncio.sleep(60)
+        except asyncio.CancelledError:
+            if wrap_in_group:  # what the MCP adapter's task group does on cancellation
+                raise ExceptionGroup("unhandled errors in a TaskGroup", [RuntimeError("closed")]) from None
+            raise
+
+    slow = StructuredTool.from_function(coroutine=hang, name="slow", description="Never returns.")
+    monkeypatch.setattr(agent_module, "TOOL_TIMEOUT_S", 0.05)
+    model, result = await _run(
+        [_tool_reply(_call("slow", {"sku": "SKU-1"}, "c1")), AIMessage(content="Data is unavailable right now.")],
+        tools=(slow,),
+    )
+    assert result.text == "Data is unavailable right now."
+    error = result.tool_calls[0].result["error"]
+    assert error["code"] == "TIMEOUT" and "No data was retrieved" in error["message"]
+    # The model sees the error envelope, not a figure.
+    assert "TIMEOUT" in model.seen[1][-1].content
