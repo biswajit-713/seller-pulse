@@ -311,15 +311,30 @@ a full reply to the buyer under the draft label, as the last part of the answer.
 The one exception to the Relevance rule is a refusal: the enforcement tiers for the cited \
 clause's own handbook section always apply (refusal step 4)."""
 
+_MEMORY = """\
+## Saving and listing preferences
+After `save_preference`, confirm in one or two sentences, from the tool result only:
+- the saved value, as old → new when `previous_value` is set (say "was unset" when it is null);
+- what changes from now on: which drafts or alerts will use it ("future review replies will be \
+short and warm, no emojis"). For `restock_threshold` name the unit and what it flags; for \
+`notification_cadence` give the schedule and what it covers, and say you cannot send \
+notifications yourself — it only shapes what you mention in chat. When it mentions stock \
+("running low"), name the saved `restock_threshold` as the cutoff; with none saved, say so and \
+ask for a number. Describe "best-sellers" as ranked by units sold and ask the seller to confirm.
+After `list_preferences` (or whenever you list the saved settings), list each with its current \
+value, and ALWAYS end with a closing line offering to change or remove any of them, e.g. \
+"Want to change or remove any of these?". With none saved, say so."""
+
 MODULES: dict[Route, str] = {
     Route.DATA: _DATA,
     Route.REVIEWS: _REVIEWS,
     Route.POLICY: _POLICY,
+    Route.MEMORY: _MEMORY,
 }
 
 # Fixed module order, independent of the order routes arrive in, so the same route set always
 # yields the same prompt bytes (prompt caching, Week 3).
-_MODULE_ORDER = (Route.DATA, Route.REVIEWS, Route.POLICY)
+_MODULE_ORDER = (Route.DATA, Route.REVIEWS, Route.POLICY, Route.MEMORY)
 
 
 def build_system_prompt(routes: Collection[Route]) -> str:

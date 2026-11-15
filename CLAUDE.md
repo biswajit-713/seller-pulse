@@ -60,7 +60,7 @@ Request pipeline, sequenced in `chat.py:respond`: `sanitize.py` → `chat.py:to_
 `data`/`reviews`/`policy`/`memory` on a separate small router model, strict JSON-schema
 output, 4s timeout, fails open to all routes) run concurrently with `rag/retrieval.py` →
 `prompts.py:build_system_prompt(routes)` (`CORE` always, plus one module per routed
-`data`/`reviews`/`policy`, in fixed order; `memory` has no module) + `rag/context.py` +
+`data`/`reviews`/`policy`, in fixed order; `memory` a short confirmation module) + `rag/context.py` +
 `prompts.py:render_preferences` (saved preferences, every turn, whatever the routes) →
 `agent.py:run_agent` (async model → tool calls → results loop) with only the routed tools
 (`router.py:tools_for` over `ROUTE_TOOLS`: `data` → the two analytics tools plus `find_listing` (listing name → SKU), `memory` → the

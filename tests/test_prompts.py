@@ -58,5 +58,9 @@ def test_single_route_selects_only_its_module():
     assert "## Sample-size honesty" not in prompt
 
 
-def test_route_without_module_is_core_only():
-    assert build_system_prompt({Route.MEMORY}) == build_system_prompt([])
+def test_memory_route_adds_confirmation_module():
+    prompt = build_system_prompt({Route.MEMORY})
+    assert "## Saving and listing preferences" in prompt
+    assert "## Figures come from tools" not in prompt
+    assert "restock_threshold" in prompt and "ranked by units sold" in prompt
+    assert "## Saving and listing preferences" not in build_system_prompt([])
