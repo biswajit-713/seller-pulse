@@ -141,3 +141,12 @@ def test_record_turn_is_a_noop_without_a_trace_and_swallows_errors(caplog):
     Tracing().record_turn(TurnTrace(), decision=None, retrieved=None, embed_cache=None, tool_calls=[], report=None, turn_ms=0)
     Tracing(BrokenClient()).record_turn(TurnTrace("t1", object()), decision=None, retrieved=None, embed_cache=None, tool_calls=[], report=None, turn_ms=0)
     assert "could not record turn events" in caplog.text
+
+
+def test_input_rail_span_and_score():
+    from seller_pulse.input_rails import RailVerdict
+
+    client = RecordingClient()
+    Tracing(client).record_input_rail(TurnTrace("t1", object()), RailVerdict(True, 500))
+    assert client.scores == {"input_rail_blocked": 1.0}
+    assert client.spans[0]["name"] == "input_rail" and client.spans[0]["metadata"]["blocked"] is True

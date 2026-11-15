@@ -10,6 +10,7 @@ import json
 from seller_pulse.agent import ToolCallRecord
 from seller_pulse.chat import ChatResult
 from seller_pulse.guardrails import GuardrailReport
+from seller_pulse.input_rails import RailVerdict
 
 NO_TOOL_CALLS = "_No tool calls_"
 NO_PREFERENCES = "_No stored preferences_"
@@ -49,6 +50,8 @@ def _guardrail_lines(report: GuardrailReport | None) -> list[str]:
 
 def render_badges(result: ChatResult) -> str:
     """One-line status badges for the reply: guardrail outcome, draft approval, cache hit/miss."""
+    if result.input_rail and result.input_rail.blocked:
+        return "⛔ **Input rail: blocked**"
     report = result.guardrail
     if report is None:  # the empty-input path: no model call, nothing to badge
         return ""
@@ -68,7 +71,17 @@ def render_badges(result: ChatResult) -> str:
     return " · ".join(badges)
 
 
+def _input_rail_line(rail: RailVerdict | None) -> str:
+    if rail is None:
+        return "**Input rail:** off"
+    state = "⛔ blocked" if rail.blocked else "✓ passed"
+    if rail.error:
+        state += " (check failed; let through)"
+    return f"**Input rail:** {state} ({rail.latency_ms} ms)"
+
+
 def render_trace(result: ChatResult) -> str:
+    blocked = bool(result.input_rail and result.input_rail.blocked)
     routes = ", ".join(sorted(r.value for r in result.routes)) or "none"
     if result.route_fallback:
         routes += " (fallback: all routes)"
@@ -78,6 +91,8 @@ def render_trace(result: ChatResult) -> str:
     ] or [NO_PREFERENCES]
     return "\n".join(
         [
+            _input_rail_line(result.input_rail),
+            "",
             f"**Routes:** {routes}",
             "",
             "**Tool calls**",
@@ -87,6 +102,6 @@ def render_trace(result: ChatResult) -> str:
             *prefs,
             "",
             "**Guardrail**",
-            *_guardrail_lines(result.guardrail),
+            *(["- not run (input rail blocked)"] if blocked else _guardrail_lines(result.guardrail)),
         ]
     )

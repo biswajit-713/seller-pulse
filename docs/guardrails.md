@@ -4,9 +4,13 @@ The rules SellerPulse must never break, where each comes from, and which layer e
 Requirement: `docs/requirements.md` §5 (Guardrail Requirements). Build plan:
 `plan/week-3/gr-00-overview.md` (`docs/tasks.md` #19–#21).
 
-Four layers enforce these rules, from strongest to weakest:
+Five layers enforce these rules, from strongest to weakest:
 
 - **Structural**: the agent has no way to do the forbidden thing at all.
+- **Input rail** (opt-in, `INPUT_RAILS=on`): a NeMo Guardrails `self check input` call
+  (`input_rails.py`, one router-model call, ~500 ms) blocks jailbreaks, injected instructions and
+  clearly policy-violating asks before the agent runs. A blocked turn returns a fixed refusal
+  with no tool call; the trace shows "Input rail: blocked". See `docs/nemo.md`.
 - **Prompt**: rules in the system prompt (`prompts.py`) that the model is told to follow.
 - **Runtime check**: deterministic code that inspects the finished answer before the seller
   sees it.
@@ -59,6 +63,24 @@ answer.
 
 ## 3. Decisions
 
+- **Input rail: input-only, and `check_output` stays (w4-09).** The rail runs concurrently with
+  classify + retrieve, so its latency sits inside the router's window. It only judges the user
+  message; it cannot see tool results or the answer, so the G1/G2/G3 runtime check still runs on
+  every answer the rail lets through. Off by default until the eval comparison shows no
+  regression. It fails **open** (error, timeout, build failure → pass, warning logged); NeMo's
+  own default on an empty judge answer is block, which the wrapper cannot tell apart from a
+  real block, so `max_tokens` in `nemo/prompts.yml` is set high enough for the reasoning model.
+  Its refusal is the generic `BLOCKED_REPLY`, not a cited policy clause, so the rail prompt
+  (`nemo/prompts.yml`) blocks only jailbreaks, injected instructions and other sellers' data, and
+  tells the judge that policy-violating asks (review incentives, keyword stuffing, misleading
+  claims, price anchoring) are "No": they continue to the `policy` route, which refuses with a
+  cited clause (G3). Measured on 11 inputs ×3 runs, stable: free-gift, refund-for-rating,
+  false-claim and fake-was-price asks pass through; jailbreak, injection and cross-seller asks
+  block; benign inputs pass. **Known gap:** the SQ-14 keyword-stuffing ask ("repeat … ten times so
+  it ranks higher") is still blocked by `gpt-oss-20b`, so it gets the generic reply; two more
+  prompt rewordings did not fix it (one made other cases worse). A structured classifier with a
+  category (policy → continue, jailbreak → block) would remove the gap. `REFUSAL_RE` and the
+  prompt's refusal procedure are untouched.
 - **Annotate, don't block.** A plain match against the sources can't tell a legitimately
   derived number from an invented one. Blocking would throw away correct answers, so the
   seller sees the answer plus a caution line.

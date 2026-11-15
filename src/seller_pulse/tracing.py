@@ -15,6 +15,7 @@ from seller_pulse.config import Settings
 if TYPE_CHECKING:
     from seller_pulse.agent import ToolCallRecord
     from seller_pulse.guardrails import GuardrailReport
+    from seller_pulse.input_rails import RailVerdict
     from seller_pulse.rag.retrieval import RetrievalResult
     from seller_pulse.router import RouteDecision
 
@@ -134,6 +135,19 @@ class Tracing:
                 )
         except Exception:
             logger.warning("tracing: could not record turn events", exc_info=True)
+
+    def record_input_rail(self, trace: TurnTrace, rail: "RailVerdict") -> None:
+        """The input rail's span and an `input_rail_blocked` score. Call inside ``turn()``."""
+        client = self._client
+        if client is None or trace.trace_id is None:
+            return
+        try:
+            _span(client, "input_rail", "guardrail", None, blocked=rail.blocked, check_failed=rail.error, latency_ms=rail.latency_ms, reason=rail.reason)
+            client.create_score(
+                name="input_rail_blocked", value=float(rail.blocked), trace_id=trace.trace_id, data_type="NUMERIC"
+            )
+        except Exception:
+            logger.warning("tracing: could not record input rail", exc_info=True)
 
     def flush(self) -> None:
         if self._client is None:

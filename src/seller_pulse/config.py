@@ -61,6 +61,9 @@ class Settings:
     cache_embed_max: int = DEFAULT_CACHE_EMBED_MAX
     cache_tool_max: int = DEFAULT_CACHE_TOOL_MAX
     cache_tool_ttl_s: float = DEFAULT_CACHE_TOOL_TTL_S
+    # INPUT_RAILS=on: NeMo input rail (w4-09) blocks jailbreaks/policy-violating asks before the
+    # agent runs. Off by default until the eval shows no regression.
+    input_rails: bool = False
     # TRACING=off: no Langfuse traces. Tracing is also off when either key is blank.
     tracing: bool = True
     langfuse_public_key: str | None = None
@@ -72,8 +75,8 @@ class Settings:
         return self.tracing and bool(self.langfuse_public_key and self.langfuse_secret_key)
 
 
-def _load_on_off(name: str) -> bool:
-    value = (os.getenv(name) or "on").strip().lower()
+def _load_on_off(name: str, default: str = "on") -> bool:
+    value = (os.getenv(name) or default).strip().lower()
     if value not in ("on", "off"):
         raise ValueError(f"{name} must be 'on' or 'off', got {value!r}.")
     return value == "on"
@@ -116,6 +119,7 @@ def load_settings() -> Settings:
         cache_embed_max=int(_positive("CACHE_EMBED_MAX", DEFAULT_CACHE_EMBED_MAX)),
         cache_tool_max=int(_positive("CACHE_TOOL_MAX", DEFAULT_CACHE_TOOL_MAX)),
         cache_tool_ttl_s=_positive("CACHE_TOOL_TTL_S", DEFAULT_CACHE_TOOL_TTL_S),
+        input_rails=_load_on_off("INPUT_RAILS", "off"),
         tracing=_load_on_off("TRACING"),
         langfuse_public_key=(os.getenv("LANGFUSE_PUBLIC_KEY") or "").strip() or None,
         langfuse_secret_key=(os.getenv("LANGFUSE_SECRET_KEY") or "").strip() or None,

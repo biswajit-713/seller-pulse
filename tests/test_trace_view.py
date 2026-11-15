@@ -137,3 +137,16 @@ def test_badges_cache_miss_then_hit():
     cached = ToolCallRecord("get_sales_analytics", {"period": "last_week"}, {"ok": True}, cached=True)
     assert "○ **Cache: miss**" in _badges(_report(), [SALES])
     assert "⚡ **Cache: hit** (1/2 tool calls)" in _badges(_report(), [cached, SALES])
+
+
+def test_input_rail_lines_and_badge():
+    from seller_pulse.input_rails import RailVerdict
+
+    off = ChatResult(text="x", trace=[])
+    assert "**Input rail:** off" in render_trace(off)
+    passed = ChatResult(text="x", trace=[], input_rail=RailVerdict(False, 480))
+    assert "**Input rail:** ✓ passed (480 ms)" in render_trace(passed)
+    blocked = ChatResult(text="x", trace=[], input_rail=RailVerdict(True, 510))
+    out = render_trace(blocked)
+    assert "**Input rail:** ⛔ blocked (510 ms)" in out and "not run (input rail blocked)" in out
+    assert render_badges(blocked) == "⛔ **Input rail: blocked**"

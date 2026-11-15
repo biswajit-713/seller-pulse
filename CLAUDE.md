@@ -21,7 +21,7 @@ recalled into every turn's prompt); and an "Agent trace" panel under the chat
 (`trace_view.py`: routes, tool calls, preferences applied, guardrail result); and a
 post-generation guardrail output check (`guardrails.py`: unsourced figures/ids and publish
 claims annotated, not blocked; draft-pending and policy-refusal status recorded; see
-`docs/guardrails.md`). Week 2 is closed out (`plan/w2-17`); Week 3 guardrails (#19–#21) are
+`docs/guardrails.md`); an opt-in NeMo input rail (`input_rails.py`, `INPUT_RAILS=on`, default off; `docs/nemo.md`) blocks jailbreak/policy-violating input before the agent. Week 2 is closed out (`plan/w2-17`); Week 3 guardrails (#19–#21) are
 done (`plan/week-3/gr-07`); caching (#22–#23) is done (`cache.py`: in-process embedding and
 analytics-tool-result caches, app only, `CACHING=off` disables; see `docs/caching.md`). The build sequence lives in `plan/` (`STATUS.md` +
 per-task files).

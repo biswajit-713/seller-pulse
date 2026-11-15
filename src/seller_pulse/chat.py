@@ -19,6 +19,7 @@ from seller_pulse.agent import RATE_LIMIT_ERRORS, ToolCallRecord, run_agent
 from seller_pulse.cache import CacheStats
 from seller_pulse.formatters import render_answer
 from seller_pulse.guardrails import GuardrailReport, annotate, check_output
+from seller_pulse.input_rails import BLOCKED_REPLY, InputRail, RailVerdict
 from seller_pulse.llm.base import LLMClient, Message
 from seller_pulse.memory import Preference, PreferenceStore
 from seller_pulse.prompts import build_system_prompt, render_preferences
@@ -49,6 +50,7 @@ class ChatResult:
     preferences: list[Preference] = field(default_factory=list)  # injected into this turn's prompt
     guardrail: GuardrailReport | None = None  # None on the empty-input path (no model call)
     trace_id: str | None = None  # the turn's Langfuse trace; None when not tracing
+    input_rail: RailVerdict | None = None  # None when the input rail is off
 
 
 def to_messages(history: list[dict[str, Any]] | None) -> list[Message]:
@@ -101,6 +103,10 @@ def _log_tool_call(record: ToolCallRecord) -> None:
         )
 
 
+async def _no_rail() -> None:
+    return None
+
+
 async def respond(
     message: str,
     history: list[dict[str, Any]] | None,
@@ -114,11 +120,13 @@ async def respond(
     tracing: Tracing = Tracing(),
     session_id: str | None = None,
     embed_stats: CacheStats | None = None,
+    input_rail: InputRail | None = None,
 ) -> ChatResult:
     """One chat turn. `store` is the seller's saved preferences, re-read every turn so a value
     saved mid-session applies on the next one; `None` runs with no recall (the agent eval).
     `tracing` opens one Langfuse trace per non-empty turn (off by default); `embed_stats` is the
-    query-embedding cache's counters, diffed over the turn for the retrieval span."""
+    query-embedding cache's counters, diffed over the turn for the retrieval span. `input_rail`
+    runs concurrently with classify + retrieve; a blocked message returns before the agent runs."""
     started = time.perf_counter()
     clean = sanitize(message)
     if not clean:
@@ -128,9 +136,20 @@ async def respond(
         previous = to_messages(history)
         embed_before = (embed_stats.hits, embed_stats.misses) if embed_stats else None
         callbacks = {"callbacks": [trace.handler]} if trace.handler else {}
-        decision, retrieved = await asyncio.gather(
-            classify(clean, previous, **callbacks), asyncio.to_thread(retriever.retrieve, clean)
+        decision, retrieved, rail = await asyncio.gather(
+            classify(clean, previous, **callbacks),
+            asyncio.to_thread(retriever.retrieve, clean),
+            input_rail(clean) if input_rail else _no_rail(),
         )
+        if rail:
+            logger.info(
+                "input_rail blocked=%s error=%s ms=%d reason=%s", rail.blocked, rail.error, rail.latency_ms, rail.reason
+            )
+            tracing.record_input_rail(trace, rail)
+            if rail.blocked:
+                return ChatResult(
+                    text=BLOCKED_REPLY, trace=[], trace_id=trace.trace_id, input_rail=rail
+                )
         routed_tools = tools_for(decision.routes, tools)
         logger.info(
             "routes=%s fallback=%s classify_ms=%d tools=%s",
@@ -209,4 +228,5 @@ async def respond(
             preferences=preferences,
             guardrail=report,
             trace_id=trace.trace_id,
+            input_rail=rail,
         )

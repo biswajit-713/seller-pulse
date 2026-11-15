@@ -10,6 +10,7 @@ import gradio as gr
 from seller_pulse.cache import CacheStats, MemoryCache, cached_tools
 from seller_pulse.chat import respond
 from seller_pulse.config import Settings, load_settings
+from seller_pulse.input_rails import build_input_rail
 from seller_pulse.llm import get_client, get_fallback_client
 from seller_pulse.mcp_tools import load_mcp_tools
 from seller_pulse.memory import PreferenceStore
@@ -50,6 +51,7 @@ def build_app(settings: Settings | None = None) -> gr.Blocks:
         )
     tools = analytics + build_memory_tools(store)
     classify = build_classifier(settings)
+    input_rail = build_input_rail(settings)  # None unless INPUT_RAILS=on
     tracing = build_tracing(settings)
     atexit.register(tracing.flush)
 
@@ -67,6 +69,7 @@ def build_app(settings: Settings | None = None) -> gr.Blocks:
             fallback=fallback,
             tracing=tracing,
             embed_stats=embed_stats,
+            input_rail=input_rail,
             session_id=request.session_hash if request else None,
         )
         return result.text, render_trace(result), render_badges(result)

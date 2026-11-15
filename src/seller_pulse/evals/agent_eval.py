@@ -49,6 +49,7 @@ from seller_pulse.evals.cases import AgentCase, load_cases
 from seller_pulse.evals.checks import CheckResult, Dimension, Groundedness, check_groundedness, run_checks
 from seller_pulse.evals.faults import inject_fault
 from seller_pulse.evals.judge import Attempt, Verdict, judge
+from seller_pulse.input_rails import InputRail, build_input_rail
 from seller_pulse.llm.base import LLMClient
 from seller_pulse.llm.groq_client import GroqLLMClient
 from seller_pulse.memory import PreferenceStore
@@ -89,6 +90,7 @@ class Pipeline:
     # Tokens in a string. o200k_base in a real run; injectable so tests needn't fetch the encoding.
     count_tokens: Callable[[str], int]
     seller_id: str = "SELLER-001"
+    input_rail: InputRail | None = None  # set by INPUT_RAILS=on
 
 
 @dataclass(frozen=True)
@@ -191,6 +193,7 @@ async def run_case(case: AgentCase, pipeline: Pipeline) -> CaseRun:
             tools=tools,
             classify=pipeline.classify,
             store=store,
+            input_rail=pipeline.input_rail,
         )
     latency_ms = round((time.perf_counter() - started) * 1000)
     if result.text == RATE_LIMITED_REPLY:
@@ -417,6 +420,7 @@ def build_pipeline(settings: Settings) -> Pipeline:
         judge_model=judge_client.chat_model,
         count_tokens=_o200k_counter(),
         seller_id=settings.seller_id,
+        input_rail=build_input_rail(settings),
     )
 
 
