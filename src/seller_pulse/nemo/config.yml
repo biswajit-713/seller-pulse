@@ -1,0 +1,13 @@
+# Input rails only (w4-08/09). The model block is a placeholder: the engine is
+# overridden by passing our own ChatGroq to LLMRails(llm=...) in the spike.
+models:
+  - type: main
+    engine: openai
+    model: openai/gpt-oss-20b
+    parameters:
+      base_url: https://api.groq.com/openai/v1
+
+rails:
+  input:
+    flows:
+      - self check input
