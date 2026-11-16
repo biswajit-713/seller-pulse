@@ -105,6 +105,35 @@ async def test_failures_fall_back_to_all_routes(model):
     assert decision.fallback is True
 
 
+class FlakyRouterModel(FakeRouterModel):
+    """Fails the first `failures` calls, then answers (a provider's transient empty reply)."""
+
+    def __init__(self, reply, failures: int) -> None:
+        super().__init__(reply)
+        self.failures, self.calls = failures, 0
+
+    async def ainvoke(self, messages):
+        self.calls += 1
+        if self.calls <= self.failures:
+            return "empty"  # not a RouteSchema -> unparseable
+        return await super().ainvoke(messages)
+
+
+async def test_one_transient_failure_is_retried():
+    model = FlakyRouterModel({"routes": ["data"]}, failures=1)
+    decision = await classify_query(model, "Sales?", [])
+    assert decision.fallback is False
+    assert decision.routes == frozenset({Route.DATA})
+    assert model.calls == 2
+
+
+async def test_two_failures_still_fall_back_after_one_retry():
+    model = FlakyRouterModel({"routes": ["data"]}, failures=2)
+    decision = await classify_query(model, "Sales?", [])
+    assert decision.fallback is True
+    assert model.calls == 2
+
+
 async def test_timeout_falls_back_to_all_routes():
     model = FakeRouterModel({"routes": ["data"]}, delay_s=1)
     decision = await classify_query(model, "How did last week go?", [], timeout_s=0.01)

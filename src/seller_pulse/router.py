@@ -172,17 +172,31 @@ async def classify_query(
     timeout_s: float = CLASSIFY_TIMEOUT_S,
     callbacks: list | None = None,
 ) -> RouteDecision:
-    """Route one message. Never raises: any failure returns `ALL_ROUTES` with `fallback=True`."""
+    """Route one message. Never raises: any failure (after one retry) returns `ALL_ROUTES` with `fallback=True`."""
     start = time.perf_counter()
     try:
         runnable = model.with_structured_output(RouteSchema, **STRUCTURED_OUTPUT)
         if callbacks:
             runnable = runnable.with_config(callbacks=callbacks)
-        answer = await asyncio.wait_for(
-            runnable.ainvoke(build_messages(question, history)), timeout=timeout_s
-        )
-        if not isinstance(answer, RouteSchema):
-            raise TypeError(f"unparseable output: {answer!r}")
+        messages = build_messages(question, history)
+
+        async def invoke() -> RouteSchema:
+            answer = await runnable.ainvoke(messages)
+            if not isinstance(answer, RouteSchema):
+                raise TypeError(f"unparseable output: {answer!r}")
+            return answer
+
+        async def invoke_with_retry() -> RouteSchema:
+            # Hosted providers (OpenRouter) occasionally return an empty structured-output
+            # message; it is transient, so one retry. The single deadline below covers both
+            # attempts, so a retry never extends the fail-open bound.
+            try:
+                return await invoke()
+            except Exception as exc:  # noqa: BLE001 - any failed first attempt gets the one retry
+                logger.info("router retrying after %s: %s", type(exc).__name__, exc)
+                return await invoke()
+
+        answer = await asyncio.wait_for(invoke_with_retry(), timeout=timeout_s)
     except Exception as exc:  # TimeoutError included
         latency_ms = _elapsed_ms(start)
         logger.warning(

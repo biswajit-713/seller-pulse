@@ -43,6 +43,7 @@ def get_router_client(settings: Settings, model: str | None = None) -> LLMClient
             api_key=settings.openrouter_api_key,
             model=model or settings.router_model,
             temperature=0,
+            reasoning_effort="low",
         )
     if settings.llm_provider == "groq":
         return GroqLLMClient(

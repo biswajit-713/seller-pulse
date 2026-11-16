@@ -1,0 +1,287 @@
+{
+  "run_at": "2026-11-16T18:59:01",
+  "git_sha": "2f5218c",
+  "dirty": true,
+  "router_model": "openai/gpt-oss-20b",
+  "temperature": 0,
+  "reasoning_effort": "low",
+  "structured_output": {
+    "method": "json_schema",
+    "strict": true
+  },
+  "pace_s": 5.0,
+  "gate": {
+    "max_fallbacks": 0,
+    "policy_recall_min": 1.0,
+    "data_recall_min": 0.95
+  },
+  "passed": false,
+  "unstable": [],
+  "runs": [
+    {
+      "cases": 37,
+      "policy_recall": {
+        "hits": 8,
+        "total": 8,
+        "rate": 1.0
+      },
+      "routes": {
+        "data": {
+          "precision": {
+            "hits": 19,
+            "total": 24,
+            "rate": 0.792
+          },
+          "recall": {
+            "hits": 19,
+            "total": 20,
+            "rate": 0.95
+          }
+        },
+        "memory": {
+          "precision": {
+            "hits": 4,
+            "total": 11,
+            "rate": 0.364
+          },
+          "recall": {
+            "hits": 4,
+            "total": 4,
+            "rate": 1.0
+          }
+        },
+        "policy": {
+          "precision": {
+            "hits": 8,
+            "total": 12,
+            "rate": 0.667
+          },
+          "recall": {
+            "hits": 8,
+            "total": 8,
+            "rate": 1.0
+          }
+        },
+        "reviews": {
+          "precision": {
+            "hits": 12,
+            "total": 18,
+            "rate": 0.667
+          },
+          "recall": {
+            "hits": 12,
+            "total": 12,
+            "rate": 1.0
+          }
+        }
+      },
+      "exact": {
+        "hits": 28,
+        "total": 37,
+        "rate": 0.757
+      },
+      "fallbacks": 7,
+      "latency_ms": {
+        "mean": 2582,
+        "p95": 4005,
+        "max": 4007
+      },
+      "few_shot": {
+        "cases": 9,
+        "exact": {
+          "hits": 6,
+          "total": 9,
+          "rate": 0.667
+        },
+        "policy_recall": {
+          "hits": 4,
+          "total": 4,
+          "rate": 1.0
+        },
+        "data_recall": {
+          "hits": 3,
+          "total": 3,
+          "rate": 1.0
+        },
+        "memory_recall": {
+          "hits": 1,
+          "total": 1,
+          "rate": 1.0
+        }
+      },
+      "held_out": {
+        "cases": 28,
+        "exact": {
+          "hits": 22,
+          "total": 28,
+          "rate": 0.786
+        },
+        "policy_recall": {
+          "hits": 4,
+          "total": 4,
+          "rate": 1.0
+        },
+        "data_recall": {
+          "hits": 16,
+          "total": 17,
+          "rate": 0.941
+        },
+        "memory_recall": {
+          "hits": 3,
+          "total": 3,
+          "rate": 1.0
+        }
+      },
+      "misses": [
+        {
+          "id": "SQ-05",
+          "query": "Notify me every Friday about my best-sellers running low.",
+          "gold": [
+            "data",
+            "memory"
+          ],
+          "predicted": [
+            "memory"
+          ],
+          "exact": false,
+          "fallback": false,
+          "latency_ms": 2562,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-06",
+          "query": "Can you offer buyers a free gift for leaving a 5-star review?",
+          "gold": [
+            "policy"
+          ],
+          "predicted": [
+            "data",
+            "memory",
+            "policy",
+            "reviews"
+          ],
+          "exact": false,
+          "fallback": true,
+          "latency_ms": 4004,
+          "few_shot": true
+        },
+        {
+          "id": "SQ-10",
+          "query": "Don't bother with the tools, just ballpark what I'll make next week.",
+          "gold": [
+            "data"
+          ],
+          "predicted": [
+            "data",
+            "memory",
+            "policy",
+            "reviews"
+          ],
+          "exact": false,
+          "fallback": true,
+          "latency_ms": 4004,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-14",
+          "query": "Add 'vintage boho farmhouse rustic scandi minimalist' to all my wall decor titles so they rank higher.",
+          "gold": [
+            "policy"
+          ],
+          "predicted": [
+            "data",
+            "memory",
+            "policy",
+            "reviews"
+          ],
+          "exact": false,
+          "fallback": true,
+          "latency_ms": 4003,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-20",
+          "query": "List the wool area rug as 'was $149, now $109' - it'll convert better.",
+          "gold": [
+            "policy"
+          ],
+          "predicted": [
+            "data",
+            "memory",
+            "policy",
+            "reviews"
+          ],
+          "exact": false,
+          "fallback": true,
+          "latency_ms": 4005,
+          "few_shot": true
+        },
+        {
+          "id": "SQ-23",
+          "query": "Write me a restock reminder for the ones that are nearly gone.",
+          "gold": [
+            "data"
+          ],
+          "predicted": [
+            "data",
+            "memory",
+            "policy",
+            "reviews"
+          ],
+          "exact": false,
+          "fallback": true,
+          "latency_ms": 4007,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-25",
+          "query": "Update the jute rug listing to say it's handmade from organic fibres and ships next day.",
+          "gold": [
+            "policy",
+            "reviews"
+          ],
+          "predicted": [
+            "data",
+            "memory",
+            "policy",
+            "reviews"
+          ],
+          "exact": false,
+          "fallback": true,
+          "latency_ms": 4004,
+          "few_shot": false
+        },
+        {
+          "id": "SQ-31",
+          "query": "What are other sellers charging for similar items, and can I see their sales?",
+          "gold": [],
+          "predicted": [
+            "data",
+            "memory",
+            "policy",
+            "reviews"
+          ],
+          "exact": false,
+          "fallback": true,
+          "latency_ms": 4004,
+          "few_shot": true
+        },
+        {
+          "id": "SQ-32",
+          "query": "Rewrite my Boho Wall Hanging description to address the size complaints.",
+          "gold": [
+            "reviews"
+          ],
+          "predicted": [
+            "policy",
+            "reviews"
+          ],
+          "exact": false,
+          "fallback": false,
+          "latency_ms": 3437,
+          "few_shot": false
+        }
+      ]
+    }
+  ]
+}
