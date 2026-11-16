@@ -131,7 +131,9 @@ routes: stock and listing status come from the tools, claims are checked against
 
 Only pick memory when the message itself sets, changes or lists a preference. Restock \
 reminders, restock decisions and "nearly gone" or low-stock checks use the saved threshold but \
-do not change it: they are data, not memory.
+do not change it: they are data, not memory. But a preference whose trigger is a sales or \
+stock condition ("tell me every Friday when best-sellers run low") is both memory and data: \
+the alert is only meaningful once the assistant can read stock and sales figures.
 
 There is no orders table: cancellations, returns and delivery problems are known only from \
 buyer reviews, so they are reviews, not data.
