@@ -12,11 +12,14 @@ DEFAULT_MODEL = "openai/gpt-oss-120b"
 # Eval judge: a different vendor from the agent so it isn't grading its own family.
 # Kimi K2 and qwen3-32b were both off Groq's model list as of 2026-10-05 (see ev-00).
 DEFAULT_JUDGE_MODEL = "qwen/qwen3.8-27b"
+# Same vendor-different-from-agent rule on OpenRouter (not checked against the live catalogue).
+DEFAULT_OPENROUTER_JUDGE_MODEL = "qwen/qwen3-32b"
 # Query classifier (rt-04). Chosen by rt-05: 31/31 routes ×3 runs, and it keeps the router off
 # the agent model's per-model Groq token limits (see plan/rt-00-overview.md).
 DEFAULT_ROUTER_MODEL = "openai/gpt-oss-20b"
-# OpenRouter: the 429 fallback for the agent model (same gpt-oss family, free tier).
-DEFAULT_OPENROUTER_MODEL = "openai/gpt-oss-120b:free"
+# OpenRouter: the agent model when LLM_PROVIDER=openrouter, else the 429 fallback (same gpt-oss
+# family, paid). The router default above is also a valid OpenRouter id.
+DEFAULT_OPENROUTER_MODEL = "openai/gpt-oss-120b"
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]  # verified: reaches the repo root
 DATA_DIR = PROJECT_ROOT / "data"
@@ -71,6 +74,18 @@ class Settings:
     langfuse_host: str | None = None  # None → the SDK default (Langfuse Cloud EU)
 
     @property
+    def agent_model(self) -> str:
+        return self.openrouter_model if self.llm_provider == "openrouter" else self.groq_model
+
+    @property
+    def api_key_name(self) -> str:
+        return "OPENROUTER_API_KEY" if self.llm_provider == "openrouter" else "GROQ_API_KEY"
+
+    @property
+    def llm_api_key(self) -> str | None:
+        return self.openrouter_api_key if self.llm_provider == "openrouter" else self.groq_api_key
+
+    @property
     def tracing_active(self) -> bool:
         return self.tracing and bool(self.langfuse_public_key and self.langfuse_secret_key)
 
@@ -102,8 +117,11 @@ def load_settings() -> Settings:
     seller_id = (os.getenv("SELLER_ID") or "").strip()
     if not seller_id:
         raise ValueError("SELLER_ID is not set. Set it in .env (e.g. SELLER_ID=SELLER-001).")
+    llm_provider = os.getenv("LLM_PROVIDER", "groq").strip().lower()
+    if llm_provider == "openrouter" and not os.getenv("OPENROUTER_API_KEY"):
+        raise ValueError("LLM_PROVIDER=openrouter needs OPENROUTER_API_KEY in .env.")
     return Settings(
-        llm_provider=os.getenv("LLM_PROVIDER", "groq").strip().lower(),
+        llm_provider=llm_provider,
         groq_api_key=os.getenv("GROQ_API_KEY") or None,
         groq_model=os.getenv("GROQ_MODEL") or DEFAULT_MODEL,
         server_port=int(os.getenv("SERVER_PORT", "7860")),
@@ -111,7 +129,8 @@ def load_settings() -> Settings:
         seller_id=seller_id,
         openrouter_api_key=os.getenv("OPENROUTER_API_KEY") or None,
         openrouter_model=os.getenv("OPENROUTER_MODEL") or DEFAULT_OPENROUTER_MODEL,
-        judge_model=os.getenv("JUDGE_MODEL") or DEFAULT_JUDGE_MODEL,
+        judge_model=os.getenv("JUDGE_MODEL")
+        or (DEFAULT_OPENROUTER_JUDGE_MODEL if llm_provider == "openrouter" else DEFAULT_JUDGE_MODEL),
         router_model=os.getenv("ROUTER_MODEL") or DEFAULT_ROUTER_MODEL,
         routing=_load_on_off("ROUTING"),
         memory_path=Path(os.getenv("MEMORY_PATH") or DEFAULT_MEMORY_PATH),

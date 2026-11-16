@@ -5,8 +5,8 @@ uv run python -m seller_pulse.evals.agent_eval [--case AE-NN ...] [--delay S] [-
 ```
 
 Runs the synthetic queries the app supports today through the real pipeline (`chat.respond` →
-router → retrieval → Groq agent → tools) and scores each answer pass/fail. It is live: it needs
-`GROQ_API_KEY` and an ingested store, so it is a runnable module, never a pytest test. Its
+router → retrieval → agent → tools) and scores each answer pass/fail. It is live: it needs
+the provider key (`GROQ_API_KEY` or `OPENROUTER_API_KEY`, per `LLM_PROVIDER`) and an ingested store, so it is a runnable module, never a pytest test. Its
 loader, scorers and judge are pytest-tested with fakes (`tests/test_eval_*.py`).
 
 Sibling of `evals/retrieval_eval.py` (retrieval only, offline) and `evals/route_eval.py`
@@ -34,7 +34,7 @@ override. Every number in the answer is normalised and matched against numbers i
 unmatched ones become suspects, which the judge classifies as derived or fabricated. An
 unclassified suspect fails.
 
-**Judge:** `qwen/qwen3.8-27b` on Groq (`JUDGE_MODEL`). A different vendor from the agent
+**Judge:** `qwen/qwen3.8-27b` on Groq, `qwen/qwen3-32b` on OpenRouter (`JUDGE_MODEL`). A different vendor from the agent
 (`openai/gpt-oss-120b`) so it isn't grading its own family; Kimi K2 and `qwen/qwen3-32b`, the
 first choices, are no longer on Groq. It sees the same retrieved context the agent got. Agent
 and judge both run at temperature 0, in the eval only.
@@ -121,7 +121,7 @@ The report records each case's `fault`.
 |---|---|
 | `0` | Scored pass rate ≥ 80%. |
 | `1` | Ran, but below threshold. |
-| `2` | Could not run: no `GROQ_API_KEY`, empty store, malformed case file, unknown `--case`, an agent/Groq error mid-run, or any case left unscored by rate limiting (below). |
+| `2` | Could not run: no provider API key, empty store, malformed case file, unknown `--case`, an agent/Groq error mid-run, or any case left unscored by rate limiting (below). |
 
 ### Rate limits and `--resume`
 

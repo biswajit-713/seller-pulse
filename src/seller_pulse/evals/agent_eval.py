@@ -51,7 +51,8 @@ from seller_pulse.evals.faults import inject_fault
 from seller_pulse.evals.judge import Attempt, Verdict, judge
 from seller_pulse.input_rails import InputRail, build_input_rail
 from seller_pulse.llm.base import LLMClient
-from seller_pulse.llm.groq_client import GroqLLMClient
+from seller_pulse.llm import get_client as get_llm_client
+from seller_pulse.llm import get_judge_client
 from seller_pulse.memory import PreferenceStore
 from seller_pulse.prompts import build_system_prompt
 from seller_pulse.rag.context import render_context
@@ -332,7 +333,7 @@ def build_report(
         "run_at": run_at.isoformat(timespec="seconds"),
         "git_sha": _git("rev-parse", "--short", "HEAD") or "unknown",
         "dirty": bool(_git("status", "--porcelain")),
-        "agent_model": settings.groq_model,
+        "agent_model": settings.agent_model,
         "routing": settings.routing,
         "router_model": settings.router_model if settings.routing else None,
         "judge_model": settings.judge_model,
@@ -411,9 +412,9 @@ def render_footer(summary: dict[str, Any]) -> None:
 def build_pipeline(settings: Settings) -> Pipeline:
     chroma = get_client(settings.chroma_path)
     check_store(policy_collection(chroma).count(), review_collection(chroma).count())
-    judge_client = GroqLLMClient(api_key=settings.groq_api_key, model=settings.judge_model, temperature=TEMPERATURE)
+    judge_client = get_judge_client(settings, TEMPERATURE)
     return Pipeline(
-        client=GroqLLMClient(api_key=settings.groq_api_key, model=settings.groq_model, temperature=TEMPERATURE),
+        client=get_llm_client(settings),  # temperature 0 == TEMPERATURE
         retriever=build_retriever(settings),
         tools=build_tools(settings),
         classify=build_classifier(settings),
@@ -542,8 +543,8 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         settings = load_settings()
-        if not settings.groq_api_key:
-            raise HarnessError("GROQ_API_KEY is not set — the agent eval calls Groq live")
+        if not settings.llm_api_key:
+            raise HarnessError(f"{settings.api_key_name} is not set — the agent eval calls the LLM live")
         cases = select_cases(load_cases(), _case_filter(argv))
         resume = _resume_path(argv)
         prior = load_prior(resume) if resume else []
@@ -558,7 +559,7 @@ def main(argv: list[str] | None = None) -> int:
     if not json_mode:
         print("SellerPulse agent eval")
         router = settings.router_model if settings.routing else "off"
-        print(f"agent: {settings.groq_model}   router: {router}   "
+        print(f"agent: {settings.agent_model}   router: {router}   "
               f"judge: {settings.judge_model}   temperature: {TEMPERATURE}")
         resumed = f"   resumed: {len(prior)} done" if prior else ""
         print(f"cases: {len(cases)}   delay: {delay_s:g}s   run: {run_at.isoformat(timespec='seconds')}{resumed}")

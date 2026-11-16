@@ -143,8 +143,8 @@ def render_table(rows: list[Row], summary: dict[str, Any]) -> str:
 
 async def _measure(pace_s: float) -> tuple[list[Row], CacheStats, CacheStats]:
     settings = load_settings()
-    if not settings.groq_api_key:
-        raise RuntimeError("GROQ_API_KEY is not set — the cache measurement calls Groq live")
+    if not settings.llm_api_key:
+        raise RuntimeError(f"{settings.api_key_name} is not set — the cache measurement calls the LLM live")
     embed_stats, tool_stats = CacheStats(), CacheStats()
     retriever = build_retriever(
         settings,

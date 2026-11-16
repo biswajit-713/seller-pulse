@@ -41,7 +41,7 @@ def test_fallback_client_needs_openrouter_key(monkeypatch):
     assert get_fallback_client(load_settings()) is None
     monkeypatch.setenv("OPENROUTER_API_KEY", "or-key")
     client = get_fallback_client(load_settings())
-    assert client.model == "openai/gpt-oss-120b:free" and client.api_key == "or-key"
+    assert client.model == "openai/gpt-oss-120b" and client.api_key == "or-key"
 
 
 def test_agent_client_caps_tokens_and_retries(monkeypatch):
@@ -56,3 +56,37 @@ def test_agent_client_caps_tokens_and_retries(monkeypatch):
     assert kwargs["max_retries"] == 4
     monkeypatch.setenv("OPENROUTER_API_KEY", "k")
     assert get_client(load_settings()).chat_model.kwargs["max_retries"] == 1
+
+
+def test_openrouter_primary_provider(monkeypatch):
+    import pytest
+
+    from seller_pulse.llm import get_client, get_fallback_client, get_router_client
+
+    monkeypatch.setenv("SELLER_ID", "SELLER-001")
+    monkeypatch.setenv("LLM_PROVIDER", "openrouter")
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    with pytest.raises(ValueError, match="OPENROUTER_API_KEY"):
+        load_settings()
+    monkeypatch.setenv("OPENROUTER_API_KEY", "or-key")
+    monkeypatch.delenv("OPENROUTER_MODEL", raising=False)
+    monkeypatch.delenv("ROUTER_MODEL", raising=False)
+    settings = load_settings()
+    agent, router = get_client(settings), get_router_client(settings)
+    assert (agent.model, agent.api_key, agent.max_tokens) == ("openai/gpt-oss-120b", "or-key", 1500)
+    assert router.model == "openai/gpt-oss-20b" and router.temperature == 0
+    assert get_fallback_client(settings) is None
+
+
+def test_openrouter_judge_and_agent_model(monkeypatch):
+    from seller_pulse.llm import get_judge_client
+
+    monkeypatch.setenv("SELLER_ID", "SELLER-001")
+    monkeypatch.setenv("LLM_PROVIDER", "openrouter")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "or-key")
+    monkeypatch.delenv("JUDGE_MODEL", raising=False)
+    monkeypatch.delenv("OPENROUTER_MODEL", raising=False)
+    settings = load_settings()
+    judge = get_judge_client(settings)
+    assert judge.model == "qwen/qwen3-32b" and judge.api_key == "or-key"
+    assert settings.agent_model == "openai/gpt-oss-120b"

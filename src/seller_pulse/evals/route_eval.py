@@ -287,8 +287,8 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         settings = load_settings()
-        if not settings.groq_api_key:
-            raise HarnessError("GROQ_API_KEY is not set — the route eval calls Groq live")
+        if not settings.llm_api_key:
+            raise HarnessError(f"{settings.api_key_name} is not set — the route eval calls the LLM live")
         model_name = _option(argv, "--model") or settings.router_model
         runs_arg = _option(argv, "--runs") or "1"
         if not runs_arg.isdigit() or int(runs_arg) < 1:

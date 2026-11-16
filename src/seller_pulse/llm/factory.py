@@ -11,6 +11,13 @@ RETRIES_WITHOUT_FALLBACK = 4
 
 
 def get_client(settings: Settings) -> LLMClient:
+    if settings.llm_provider == "openrouter":
+        return OpenRouterLLMClient(
+            api_key=settings.openrouter_api_key,
+            model=settings.openrouter_model,
+            temperature=0,
+            max_tokens=AGENT_MAX_TOKENS,
+        )
     if settings.llm_provider == "groq":
         return GroqLLMClient(
             api_key=settings.groq_api_key,
@@ -24,13 +31,19 @@ def get_client(settings: Settings) -> LLMClient:
             else RETRIES_WITHOUT_FALLBACK,
         )
     raise ValueError(
-        f"Unknown LLM_PROVIDER {settings.llm_provider!r}; expected 'groq'."
+        f"Unknown LLM_PROVIDER {settings.llm_provider!r}; expected 'groq' or 'openrouter'."
     )
 
 
 def get_router_client(settings: Settings, model: str | None = None) -> LLMClient:
     """The query classifier's model (rt-04): deterministic and cheap. `model` overrides
     `Settings.router_model` (the route eval compares candidates)."""
+    if settings.llm_provider == "openrouter":
+        return OpenRouterLLMClient(
+            api_key=settings.openrouter_api_key,
+            model=model or settings.router_model,
+            temperature=0,
+        )
     if settings.llm_provider == "groq":
         return GroqLLMClient(
             api_key=settings.groq_api_key,
@@ -39,13 +52,29 @@ def get_router_client(settings: Settings, model: str | None = None) -> LLMClient
             reasoning_effort="low",
         )
     raise ValueError(
-        f"Unknown LLM_PROVIDER {settings.llm_provider!r}; expected 'groq'."
+        f"Unknown LLM_PROVIDER {settings.llm_provider!r}; expected 'groq' or 'openrouter'."
+    )
+
+
+def get_judge_client(settings: Settings, temperature: float = 0) -> LLMClient:
+    """The eval LLM judge (`Settings.judge_model`), on the same provider as the agent."""
+    if settings.llm_provider == "openrouter":
+        return OpenRouterLLMClient(
+            api_key=settings.openrouter_api_key, model=settings.judge_model, temperature=temperature
+        )
+    if settings.llm_provider == "groq":
+        return GroqLLMClient(
+            api_key=settings.groq_api_key, model=settings.judge_model, temperature=temperature
+        )
+    raise ValueError(
+        f"Unknown LLM_PROVIDER {settings.llm_provider!r}; expected 'groq' or 'openrouter'."
     )
 
 
 def get_fallback_client(settings: Settings) -> LLMClient | None:
-    """The agent model's 429 fallback (`agent.run_agent`): OpenRouter when a key is set."""
-    if settings.openrouter_api_key:
+    """The agent model's 429 fallback (`agent.run_agent`): OpenRouter when a key is set and it
+    isn't already the primary provider."""
+    if settings.llm_provider == "groq" and settings.openrouter_api_key:
         return OpenRouterLLMClient(
             api_key=settings.openrouter_api_key,
             model=settings.openrouter_model,
