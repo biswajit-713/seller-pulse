@@ -1,0 +1,154 @@
+{
+  "run_at": "2026-11-17T15:58:30",
+  "git_sha": "0fea6c8",
+  "dirty": true,
+  "router_model": "openai/gpt-oss-20b",
+  "temperature": 0,
+  "reasoning_effort": "low",
+  "structured_output": {
+    "method": "json_schema",
+    "strict": true
+  },
+  "pace_s": 5.0,
+  "gate": {
+    "max_fallbacks": 0,
+    "policy_recall_min": 1.0,
+    "data_recall_min": 0.95
+  },
+  "passed": true,
+  "unstable": [],
+  "runs": [
+    {
+      "cases": 37,
+      "policy_recall": {
+        "hits": 8,
+        "total": 8,
+        "rate": 1.0
+      },
+      "routes": {
+        "data": {
+          "precision": {
+            "hits": 20,
+            "total": 20,
+            "rate": 1.0
+          },
+          "recall": {
+            "hits": 20,
+            "total": 20,
+            "rate": 1.0
+          }
+        },
+        "memory": {
+          "precision": {
+            "hits": 4,
+            "total": 4,
+            "rate": 1.0
+          },
+          "recall": {
+            "hits": 4,
+            "total": 4,
+            "rate": 1.0
+          }
+        },
+        "policy": {
+          "precision": {
+            "hits": 8,
+            "total": 8,
+            "rate": 1.0
+          },
+          "recall": {
+            "hits": 8,
+            "total": 8,
+            "rate": 1.0
+          }
+        },
+        "reviews": {
+          "precision": {
+            "hits": 12,
+            "total": 13,
+            "rate": 0.923
+          },
+          "recall": {
+            "hits": 12,
+            "total": 12,
+            "rate": 1.0
+          }
+        }
+      },
+      "exact": {
+        "hits": 36,
+        "total": 37,
+        "rate": 0.973
+      },
+      "fallbacks": 0,
+      "latency_ms": {
+        "mean": 1511,
+        "p95": 2592,
+        "max": 2980
+      },
+      "few_shot": {
+        "cases": 9,
+        "exact": {
+          "hits": 9,
+          "total": 9,
+          "rate": 1.0
+        },
+        "policy_recall": {
+          "hits": 4,
+          "total": 4,
+          "rate": 1.0
+        },
+        "data_recall": {
+          "hits": 3,
+          "total": 3,
+          "rate": 1.0
+        },
+        "memory_recall": {
+          "hits": 1,
+          "total": 1,
+          "rate": 1.0
+        }
+      },
+      "held_out": {
+        "cases": 28,
+        "exact": {
+          "hits": 27,
+          "total": 28,
+          "rate": 0.964
+        },
+        "policy_recall": {
+          "hits": 4,
+          "total": 4,
+          "rate": 1.0
+        },
+        "data_recall": {
+          "hits": 17,
+          "total": 17,
+          "rate": 1.0
+        },
+        "memory_recall": {
+          "hits": 3,
+          "total": 3,
+          "rate": 1.0
+        }
+      },
+      "misses": [
+        {
+          "id": "SQ-14",
+          "query": "Add 'vintage boho farmhouse rustic scandi minimalist' to all my wall decor titles so they rank higher.",
+          "gold": [
+            "policy"
+          ],
+          "predicted": [
+            "policy",
+            "reviews"
+          ],
+          "exact": false,
+          "fallback": false,
+          "latency_ms": 1335,
+          "few_shot": false
+        }
+      ]
+    }
+  ]
+}

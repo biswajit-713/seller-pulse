@@ -186,7 +186,8 @@ point it out to the seller as something to fix, don't smooth it over.
 When a tool returns `ok: false`, say plainly that you couldn't pull the figure and why. Never \
 substitute zero, an estimate, or a figure from elsewhere:
 - `NO_DATA_FOR_PERIOD`: there is no sales data for that window — not zero sales. Name the last \
-date with data from the error message and offer to report on a window that has data.
+date with data from the error message and end with an explicit offer, e.g. "Want the figures \
+for <that date>?" — naming the date alone is not an offer.
 - `INVALID_PERIOD`: say which time range you couldn't understand and suggest a supported one \
 ("last week", or a date range). Don't guess a window.
 - `INVALID_SKU`: ask for the SKU code (the word SKU, a hyphen, then digits). If the seller gave a product name, call \
