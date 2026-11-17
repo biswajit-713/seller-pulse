@@ -89,3 +89,14 @@ def test_invalid_arguments(kwargs, code):
 def test_other_seller_sees_nothing():
     data = get_review_summary("SELLER-999")["data"]
     assert data["count"] == 0 and data["items"] == []
+
+
+def test_min_reviews_drops_single_review_skus_and_is_optional():
+    by_sku = _ratings()
+    expected = {s for s, rs in by_sku.items() if len(rs) >= 2 and sum(rs) / len(rs) <= 2.5}
+    repeated = get_review_summary(SELLER, max_avg_rating=2.5, min_reviews=2, limit=MAX_REVIEW_ITEMS)
+    assert repeated["ok"] and _skus(repeated) == expected and expected
+    assert all(i["review_count"] >= 2 for i in repeated["data"]["items"])
+    # Omitted: single-review SKUs still match, so "all below 3 stars" is unchanged.
+    plain = get_review_summary(SELLER, max_avg_rating=2.5, limit=MAX_REVIEW_ITEMS)
+    assert _skus(repeated) < _skus(plain)

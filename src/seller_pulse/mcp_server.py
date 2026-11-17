@@ -36,6 +36,7 @@ from seller_pulse.tools import (
     MAX_STOCK_DESCRIPTION,
     MAX_UNITS_SOLD_DESCRIPTION,
     METRIC_DESCRIPTION,
+    MIN_REVIEWS_DESCRIPTION,
     MIN_STOCK_DESCRIPTION,
     PERIOD_DESCRIPTION,
     REVIEW_LIMIT_DESCRIPTION,
@@ -109,8 +110,9 @@ def build_server(settings: Settings) -> FastMCP:
         rating: Annotated[int | None, Field(description=REVIEW_RATING_DESCRIPTION)] = None,
         max_avg_rating: Annotated[float | None, Field(description=MAX_AVG_RATING_DESCRIPTION)] = None,
         limit: Annotated[int, Field(description=REVIEW_LIMIT_DESCRIPTION)] = 20,
+        min_reviews: Annotated[int | None, Field(description=MIN_REVIEWS_DESCRIPTION)] = None,
     ) -> dict:
-        return get_review_summary(seller_id, has_reviews, rating, max_avg_rating, limit)
+        return get_review_summary(seller_id, has_reviews, rating, max_avg_rating, limit, min_reviews)
 
     return server
 

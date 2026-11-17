@@ -42,11 +42,12 @@ def get_review_summary(
     rating: int | None = None,
     max_avg_rating: float | None = None,
     limit: int = 20,
+    min_reviews: int | None = None,
 ) -> dict:
     """One row per listing with its review count and ratings, filtered. Never raises.
 
     Filters combine (AND). `rating` keeps products with at least one review at exactly that
-    rating; each row still reports the whole picture. Rows run lowest average first, products
+    rating; `min_reviews` keeps products with at least that many reviews; each row still reports the whole picture. Rows run lowest average first, products
     with no reviews last; `count` is every match, `items` is capped at `limit`.
     """
     for name, value in (("rating", rating), ("max_avg_rating", max_avg_rating)):
@@ -64,6 +65,8 @@ def get_review_summary(
         if rating is not None and rating not in given:
             continue
         if max_avg_rating is not None and (avg is None or avg > max_avg_rating):
+            continue
+        if min_reviews is not None and len(given) < min_reviews:
             continue
         rows.append(
             {

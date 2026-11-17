@@ -119,6 +119,12 @@ REVIEW_RATING_DESCRIPTION = "Only products with at least one review of exactly t
 
 MAX_AVG_RATING_DESCRIPTION = "Only reviewed products whose average rating is at or below this, 1 to 5."
 
+MIN_REVIEWS_DESCRIPTION = (
+    "Only products with at least this many reviews. Use 2 when ranking the worst or best "
+    "products: one review is an anecdote, several are a pattern. Omit to include products "
+    "with a single review."
+)
+
 REVIEW_LIMIT_DESCRIPTION = (
     f"How many products to return, 1 to {MAX_REVIEW_ITEMS}. Default 20; use {MAX_REVIEW_ITEMS} "
     "when the seller wants every match listed."
@@ -200,8 +206,9 @@ def build_tools(settings: Settings) -> list[BaseTool]:
         rating: Annotated[int | None, Field(description=REVIEW_RATING_DESCRIPTION)] = None,
         max_avg_rating: Annotated[float | None, Field(description=MAX_AVG_RATING_DESCRIPTION)] = None,
         limit: Annotated[int, Field(description=REVIEW_LIMIT_DESCRIPTION)] = 20,
+        min_reviews: Annotated[int | None, Field(description=MIN_REVIEWS_DESCRIPTION)] = None,
     ) -> dict:
-        return get_review_summary(seller_id, has_reviews, rating, max_avg_rating, limit)
+        return get_review_summary(seller_id, has_reviews, rating, max_avg_rating, limit, min_reviews)
 
     return [
         StructuredTool.from_function(

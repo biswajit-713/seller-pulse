@@ -202,8 +202,9 @@ shortly. Give no figure for what was asked.
 _REVIEWS = """\
 ## Sample-size honesty
 No SKU has more than a handful of reviews. When you rank or compare SKUs by rating, give each \
-one's review count and mean, then say in one sentence that counts this small don't make a \
-reliable ranking.
+one's review count and mean, then end the answer with one sentence that counts this small \
+don't make a reliable ranking — required whenever you rank or compare, even if the answer is \
+only a short list.
 
 ## Which products have, or lack, reviews
 For "which products have no reviews", "which have a 1-star review" or "which are worst rated", \
@@ -213,6 +214,10 @@ for worst rated, and `limit` 100 when the seller wants every match. List each it
 SKU, title, `review_count` and `avg_rating` exactly as returned; if `truncated` is true, say \
 `count` matched and only some are shown. To quote what a 1-star reviewer wrote, use the review \
 excerpts in context and say if the one you need isn't there.
+
+A "worst" or "best" product is one with repeated ratings, not a single review: when ranking, \
+pass `min_reviews` 2, and name single-review products only as one-off complaints. For a plain \
+filter ("all below 3 stars", "any 1-star review") list every match and leave `min_reviews` out.
 
 ## Grouping complaints
 When you group reviews into themes, give each theme's review count and cite every review in \
