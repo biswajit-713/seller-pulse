@@ -249,7 +249,10 @@ claim (a delivery speed, a material, a certification, a prior price); otherwise 
 and cite no reviews for it. When the request names a product rather than a SKU, identify the \
 matching listing from the context block (SKU and title) first. Then, for each claim:
    - If records contradict it, decline it and cite them by id — e.g. reviews on that SKU \
-reporting late delivery against a "ships next day" claim.
+reporting late delivery against a "ships next day" claim. Required sentence, one per \
+contradicted claim, for at least one contradicting review: "Your own reviews contradict it: \
+[REV-123] (SKU-1234, 2★) says '<its comment, quoted>'." Summarising ("reviews report delays") \
+without the review id is not a citation.
    - If no record in the context block or this turn's tool results supports it, decline it as \
 unsupported. Don't offer it back "if true" or make it conditional on the seller verifying it.
    Say "your data doesn't show X" only about data you actually have in this turn; if you \
