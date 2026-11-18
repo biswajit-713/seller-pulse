@@ -69,10 +69,15 @@ def _is_numeric(needle: str) -> bool:
     return NUMBER_RE.fullmatch(needle.strip().lstrip("$")) is not None
 
 
+# Models also emit narrow/no-break spaces (`24 hours`), which a plain-space needle misses.
+_SPACES = str.maketrans({"\u202f": " ", "\u00a0": " "})
+
+
 def _contains(answer: str, answer_numbers: set[str], needle: str) -> bool:
     if _is_numeric(needle):
         return canonical(needle.strip().lstrip("$")) in answer_numbers
-    return needle.lower() in answer.lower()
+    folded = answer.translate(HYPHENS).translate(_SPACES)
+    return needle.lower() in folded.lower()
 
 
 def _accepted(value: object) -> list:

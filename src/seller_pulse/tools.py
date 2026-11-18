@@ -61,17 +61,21 @@ INVENTORY_DESCRIPTION = (
     "Use this for any stock figure — never estimate."
 )
 
-SKU_DESCRIPTION = "The SKU code, in the form SKU-1234."
+SKU_DESCRIPTION = (
+    "The SKU code, in the form SKU-1234, as the seller typed it or as find_listing returned it — "
+    "never one taken from a review."
+)
 
 SALES_SKU_DESCRIPTION = (
     "Optional SKU code, in the form SKU-1234, to report that one listing's sales instead of "
-    "the whole store's. Omit for store-wide figures."
+    "the whole store's. Omit for store-wide figures. Use only a SKU the seller typed or "
+    "find_listing returned — never one taken from a review."
 )
 
 FIND_LISTING_DESCRIPTION = (
     "Find the seller's listing SKUs from a product name, as the seller wrote it (case, spacing and "
-    "small typos are fine). Use this first whenever the seller names a product instead of giving "
-    "a SKU."
+    "small typos are fine), each with its review count. Use this first whenever the seller names a "
+    "product instead of giving a SKU, even if a review in context shows a SKU for that title."
 )
 
 LISTING_NAME_DESCRIPTION = "The product name or a distinctive part of it, e.g. 'Boho Wall Hanging'."

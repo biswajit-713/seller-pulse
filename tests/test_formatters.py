@@ -78,12 +78,20 @@ def test_sales_sku_with_unequal_coverage_prints_no_percentage():
     assert "isn't a like-for-like comparison" in text
 
 
-def test_low_stock_flags_active_without_stock_and_truncation():
+def test_low_stock_truncation():
     result = list_low_stock(SELLER, 5)
+    result["data"]["items"] = [i for i in result["data"]["items"] if i["sku"] != "SKU-1013" and i["sku"] != "SKU-1020"]
     text = _render("list_low_stock", {"threshold": 5}, result)
     assert text.startswith("**Low stock, at or below 5 units**")
-    assert "- SKU-1013 — Industrial Sconce Wall Sconce: 0 in stock (Active). Active with no stock" in text
     assert "58 listings match; showing the lowest only." in text
+
+
+def test_active_without_stock_is_left_to_the_model_for_the_policy_deadline():
+    for name, args, result in (
+        ("list_low_stock", {"threshold": 5}, list_low_stock(SELLER, 5)),
+        ("check_inventory_status", {"sku": "SKU-1013"}, check_inventory_status(SELLER, "SKU-1013")),
+    ):
+        assert render_answer([_record(name, args, result)], []) is None
 
 
 def test_low_stock_empty():
@@ -93,9 +101,7 @@ def test_low_stock_empty():
 
 def test_inventory_applies_saved_restock_threshold():
     pref = Preference(key="restock_threshold", value="5", updated_at="2026-09-01", previous_value=None)
-    text = _render("check_inventory_status", {"sku": "SKU-1013"}, check_inventory_status(SELLER, "SKU-1013"), [pref])
-    assert "- Price: $75.60" in text
-    assert "an inconsistency to fix" in text
+    text = _render("check_inventory_status", {"sku": "SKU-1002"}, check_inventory_status(SELLER, "SKU-1002"), [pref])
     assert "At or below your restock threshold (5): time to restock." in text
 
 

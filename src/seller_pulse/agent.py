@@ -10,6 +10,7 @@ than raised — the model decides how to degrade. Every call, failed or not, is 
 
 import asyncio
 import json
+import re
 import time
 from dataclasses import dataclass
 
@@ -51,6 +52,33 @@ class AgentResult:
 
 def _error(code: str, message: str) -> dict:
     return {"ok": False, "error": {"code": code, "message": message}}
+
+
+_SKU_IN_TEXT = re.compile(r"sku[\s-]*(\d{4})", re.IGNORECASE)
+
+
+def _skus_in(text: str) -> set[str]:
+    return {f"SKU-{digits}" for digits in _SKU_IN_TEXT.findall(text)}
+
+
+def _unconfirmed_sku(args: dict, confirmed: set[str]) -> dict | None:
+    """Error envelope when a call passes a SKU that came from neither the conversation nor a tool.
+
+    The context block carries SKUs from reviews; a model that copies one for a product the seller
+    only named skips `find_listing` and may analyse the wrong listing. Prompt wording lowers that
+    rate but cannot rule it out, so the loop does.
+    """
+    sku = args.get("sku")
+    if not isinstance(sku, str) or not sku.strip():
+        return None
+    # A malformed SKU is the tool's to reject (INVALID_SKU), not ours.
+    if _skus_in(sku) <= confirmed:
+        return None
+    return _error(
+        "UNCONFIRMED_SKU",
+        f"{sku.strip()} was not given by the seller or returned by a tool. Call find_listing with the "
+        "product name the seller used, then use a SKU from its matches.",
+    )
 
 
 def _to_langchain(system: str, messages: list[Message]) -> list[BaseMessage]:
@@ -102,6 +130,8 @@ async def run_agent(
     tools_by_name = {tool.name: tool for tool in tools}
     lc_messages = _to_langchain(system, messages)
     records: list[ToolCallRecord] = []
+    # SKUs the seller or an earlier answer already named (history included), then any a tool returns.
+    confirmed: set[str] = set().union(*(_skus_in(m["content"]) for m in messages)) if messages else set()
 
     for _ in range(max_steps):
         reply = await bound.ainvoke(lc_messages)
@@ -111,7 +141,9 @@ async def run_agent(
         lc_messages.append(reply)
         for call in reply.tool_calls:
             started = time.perf_counter()
-            result = await _run_tool(tools_by_name, call["name"], call["args"])
+            result = _unconfirmed_sku(call["args"], confirmed) or await _run_tool(
+                tools_by_name, call["name"], call["args"]
+            )
             latency_ms = round((time.perf_counter() - started) * 1000)
             # Private flag from the cache wrapper: for the record only, never the model or guardrail.
             cached = bool(result.pop("_cache_hit", False))
@@ -124,6 +156,7 @@ async def run_agent(
                     latency_ms=latency_ms,
                 )
             )
+            confirmed |= _skus_in(json.dumps(result))
             lc_messages.append(ToolMessage(json.dumps(result), tool_call_id=call["id"]))
 
     # The last reply asked for more tools, so its content is empty or a preamble

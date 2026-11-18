@@ -121,6 +121,10 @@ def _norm_title(text: str) -> str:
     return re.sub(r"[^a-z0-9]", "", text.lower())
 
 
+def _words(text: str) -> set[str]:
+    return set(re.findall(r"[a-z0-9]+", text.lower()))
+
+
 def _fuzzy_score(query: str, title: str) -> float:
     """Best `difflib` ratio of ``query`` against any same-length-plus-one stretch of ``title``.
 
@@ -135,17 +139,24 @@ def _fuzzy_score(query: str, title: str) -> float:
 def find_listing(seller_id: str, name: str) -> dict:
     """Resolve a product name to the seller's SKUs. Never raises for bad input.
 
-    A normalised substring match first (case, spaces and punctuation ignored); only when that
-    finds nothing, the closest titles by sliding `difflib` ratio, so a typo still resolves. Several
-    candidates are returned as-is for the caller to disambiguate.
+    A match first: the name is a normalised substring of the title (case, spaces and punctuation
+    ignored), or every word of the name is a word of the title in any order ("Boho Wall Hanging"
+    finds "Boho Macrame Wall Hanging - Small"). Only when nothing matches, the closest titles by
+    sliding `difflib` ratio, so a typo still resolves. Several candidates are returned as-is for the
+    caller to disambiguate, each with its `review_count` so the caller can say which have reviews.
     """
+    from seller_pulse.reviews import review_count  # reviews imports this module: import late
+
+    name_words = _words(name)
     query = _norm_title(name)
     if len(query) < MIN_NAME_CHARS:
         return _error("INVALID_NAME", f"'{name.strip()}' is too short to match a listing. Give more of the product name.")
 
     # Tenant filter first: another seller's listing is indistinguishable from no match.
     rows = [(listing, _norm_title(listing.title)) for listing in _LISTINGS.values() if listing.seller_id == seller_id]
-    matches = [listing for listing, title in rows if query in title]
+    matches = [
+        listing for listing, title in rows if query in title or name_words <= _words(listing.title)
+    ]
     if not matches:
         scored = sorted(
             ((_fuzzy_score(query, title), listing) for listing, title in rows),
@@ -158,7 +169,15 @@ def find_listing(seller_id: str, name: str) -> dict:
     return {
         "ok": True,
         "data": {
-            "matches": [{"sku": m.sku, "title": m.title, "status": m.status} for m in matches[:MAX_MATCHES]],
+            "matches": [
+                {
+                    "sku": m.sku,
+                    "title": m.title,
+                    "status": m.status,
+                    "review_count": review_count(seller_id, m.sku),
+                }
+                for m in matches[:MAX_MATCHES]
+            ],
             "truncated": len(matches) > MAX_MATCHES,
         },
     }

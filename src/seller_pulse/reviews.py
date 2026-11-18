@@ -32,6 +32,11 @@ def _load_ratings(path) -> dict[tuple[str, str], list[int]]:
 _RATINGS = _load_ratings(DEFAULT_REVIEWS_PATH)
 
 
+def review_count(seller_id: str, sku: str) -> int:
+    """How many reviews this seller's SKU has; 0 for none."""
+    return len(_RATINGS.get((seller_id, sku), ()))
+
+
 def _error(code: str, message: str) -> dict:
     return {"ok": False, "error": {"code": code, "message": message}}
 

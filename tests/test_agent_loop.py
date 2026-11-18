@@ -127,7 +127,7 @@ async def test_cache_hit_flag_recorded_but_hidden_from_model():
     model = ScriptedChatModel(
         [_tool_reply(_call("echo", {"sku": "SKU-1001"}, "c1")), AIMessage(content="done")]
     )
-    result = await run_agent(model, system="s", messages=[], tools=[tool])
+    result = await run_agent(model, system="s", messages=HISTORY, tools=[tool])
     record = result.tool_calls[0]
     assert record.cached is True
     assert record.latency_ms >= 0

@@ -121,14 +121,18 @@ def _sales(data: dict, _preferences: list[Preference]) -> str:
 
 
 def _listing_line(item: dict) -> str:
-    line = f"- {item['sku']} — {item['title']}: {item['stock_qty']} in stock ({item['status']})"
-    if _active_without_stock(item):
-        line += ". Active with no stock — fix the listing"
-    return line
+    return f"- {item['sku']} — {item['title']}: {item['stock_qty']} in stock ({item['status']})"
 
 
 def _active_without_stock(item: dict) -> bool:
     return item["stock_qty"] == 0 and item["status"] == "Active"
+
+
+def _has_active_without_stock(record: ToolCallRecord) -> bool:
+    data = record.result["data"]
+    if record.name == "list_low_stock":
+        return any(_active_without_stock(item) for item in data["items"])
+    return record.name == "check_inventory_status" and _active_without_stock(data)
 
 
 def _low_stock(data: dict, _preferences: list[Preference]) -> str:
@@ -156,8 +160,6 @@ def _restock_threshold(preferences: Iterable[Preference]) -> int | None:
 
 def _inventory(data: dict, preferences: list[Preference]) -> str:
     notes = []
-    if _active_without_stock(data):
-        notes.append("This listing is Active with no stock — an inconsistency to fix.")
     threshold = _restock_threshold(preferences)
     if threshold is not None and data["stock_qty"] <= threshold:
         notes.append(f"At or below your restock threshold ({threshold}): time to restock.")
@@ -191,6 +193,8 @@ def render_answer(trace: list[ToolCallRecord], preferences: list[Preference]) ->
     formatter = _FORMATTERS.get(record.name)
     if formatter is None or not record.result.get("ok"):
         return None
+    if _has_active_without_stock(record):
+        return None  # a compliance finding: the model cites the policy deadline, code can't
     try:
         return formatter(record.result["data"], preferences)
     except (KeyError, TypeError):
