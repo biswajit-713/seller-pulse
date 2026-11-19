@@ -114,7 +114,8 @@ REVIEW_SUMMARY_DESCRIPTION = (
     "filtered: products with no reviews, with at least one review of a given star rating, or "
     "averaging at or below a rating. Lowest average first, unreviewed products last. Use this "
     "for any question about which products have no reviews, have 1-star (or any N-star) "
-    "reviews, or are worst rated — it returns counts and ratings, not review text."
+    "reviews, or are worst rated — it returns counts and ratings, not review text. `count` is "
+    "how many products matched out of `total_skus` in the catalog."
 )
 
 HAS_REVIEWS_DESCRIPTION = "false: only products with no reviews. true: only products with at least one. Omit for both."

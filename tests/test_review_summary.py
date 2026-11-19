@@ -29,6 +29,7 @@ def test_unreviewed_listings_are_the_set_difference():
     unreviewed = {r["sku"] for r in _csv(DEFAULT_LISTINGS_PATH)} - set(_ratings())
     data = get_review_summary(SELLER, has_reviews=False, limit=MAX_REVIEW_ITEMS)["data"]
     assert data["count"] == len(unreviewed) and not data["truncated"]
+    assert data["total_skus"] == len(_csv(DEFAULT_LISTINGS_PATH))
     assert {i["sku"] for i in data["items"]} == unreviewed
     assert all(i["review_count"] == 0 and i["avg_rating"] is None for i in data["items"])
 

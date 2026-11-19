@@ -53,7 +53,7 @@ def get_review_summary(
 
     Filters combine (AND). `rating` keeps products with at least one review at exactly that
     rating; `min_reviews` keeps products with at least that many reviews; each row still reports the whole picture. Rows run lowest average first, products
-    with no reviews last; `count` is every match, `items` is capped at `limit`.
+    with no reviews last; `count` is every match, `total_skus` the whole catalog, `items` is capped at `limit`.
     """
     for name, value in (("rating", rating), ("max_avg_rating", max_avg_rating)):
         if value is not None and not MIN_RATING <= value <= MAX_RATING:
@@ -61,8 +61,9 @@ def get_review_summary(
     if not 1 <= limit <= MAX_REVIEW_ITEMS:
         return _error("INVALID_LIMIT", f"{limit} is not a usable limit. Give a whole number from 1 to {MAX_REVIEW_ITEMS}.")
 
+    listings = listings_for(seller_id)
     rows = []
-    for listing in listings_for(seller_id):
+    for listing in listings:
         given = _RATINGS.get((seller_id, listing.sku), [])
         avg = round(sum(given) / len(given), 2) if given else None
         if has_reviews is not None and bool(given) != has_reviews:
@@ -86,5 +87,10 @@ def get_review_summary(
     rows.sort(key=lambda r: (r["avg_rating"] is None, r["avg_rating"] or 0, r["sku"]))
     return {
         "ok": True,
-        "data": {"count": len(rows), "items": rows[:limit], "truncated": len(rows) > limit},
+        "data": {
+            "count": len(rows),
+            "total_skus": len(listings),
+            "items": rows[:limit],
+            "truncated": len(rows) > limit,
+        },
     }

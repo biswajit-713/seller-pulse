@@ -357,9 +357,9 @@ Per-product review aggregation, so "which products have no reviews?" and "which 
 are one call, not a top-k retrieval (an unreviewed SKU has no review text to match). Left-joins
 the seller's listings to `reviews.csv`. Filters combine: `has_reviews` false/true, `rating` 1–5
 (at least one review at exactly that rating), `max_avg_rating` 1–5 (reviewed products only).
-`data` is `{"count", "items": [{"sku", "title", "review_count", "avg_rating", "lowest_rating"}],
+`data` is `{"count", "total_skus", "items": [{"sku", "title", "review_count", "avg_rating", "lowest_rating"}],
 "truncated"}`, lowest average first, unreviewed last (`avg_rating`/`lowest_rating` null);
-`items` capped at `limit` (1–100, default 20; `count` is every match). Rows report the whole
+`items` capped at `limit` (1–100, default 20; `count` is every match; `total_skus` is the whole catalog, so "65 of 150" needs no second call). Rows report the whole
 picture even under a `rating` filter. Counts and ratings only — review text stays with RAG.
 Bound on the `reviews` route; cached (static data).
 
