@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from seller_pulse.evals import route_eval
 from seller_pulse.evals.route_cases import RouteCase, load_route_cases
 from seller_pulse.evals.route_eval import CaseResult, gate, p95, run_once, score_run, unstable
@@ -128,11 +130,16 @@ def test_report_name_and_shape(tmp_path):
     assert loaded["structured_output"] == {"method": "json_schema", "strict": True}
 
 
-def test_missing_api_key_is_exit_2(monkeypatch, capsys):
+@pytest.mark.parametrize(
+    "provider, key", [("groq", "GROQ_API_KEY"), ("openrouter", "OPENROUTER_API_KEY")]
+)
+def test_missing_api_key_is_exit_2(monkeypatch, capsys, provider, key):
     monkeypatch.setenv("SELLER_ID", "SELLER-001")
+    monkeypatch.setenv("LLM_PROVIDER", provider)
     monkeypatch.setenv("GROQ_API_KEY", "")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "")
     assert route_eval.main(["--json"]) == 2
-    assert "GROQ_API_KEY" in json.loads(capsys.readouterr().out)["error"]
+    assert key in json.loads(capsys.readouterr().out)["error"]
 
 
 def test_bad_runs_flag_is_exit_2(monkeypatch, capsys):

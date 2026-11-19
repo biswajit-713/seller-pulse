@@ -73,7 +73,7 @@ count. Dimension and bucket rates are diagnostic.
 | AE-23 | SQ-04 — low-stock products (`list_low_stock`) | inventory | scored |
 | AE-24 | SQ-05 — notify me every Friday (memory write) | memory | scored |
 | AE-25 | SQ-07 — zero stock but still taking orders | inventory | scored |
-| AE-26 | SQ-08 — best-selling product (units and revenue) | sales | scored |
+| AE-26 | SQ-08 — best-selling product (default metric revenue, named in the answer) | sales | scored |
 | AE-27 | SQ-11 — top category by revenue | sales | scored |
 | AE-28 | SQ-16 — reply-tone preference (memory write) | memory | scored |
 | AE-29 | SQ-19 — products with no reviews (`get_review_summary`) | rag_draft | scored |

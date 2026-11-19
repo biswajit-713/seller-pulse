@@ -5,7 +5,7 @@
 {"id": "SQ-05", "routes": ["memory", "data"], "why": "Memory write (Friday alert preference); best-sellers x low stock is tool data."}
 {"id": "SQ-06", "routes": ["policy"], "why": "Review-incentive request; refuse and cite the review-manipulation policy."}
 {"id": "SQ-07", "routes": ["data", "policy"], "why": "Inventory vs listing status cross-check, framed as a compliance finding under the 24-hour deactivation rule."}
-{"id": "SQ-08", "routes": ["data"], "why": "Best-seller by units and revenue from the sales tool."}
+{"id": "SQ-08", "routes": ["data"], "why": "Best-seller ranking (default metric revenue) from the sales tool."}
 {"id": "SQ-09", "routes": ["data"], "why": "Two period totals from the sales tool, partial-month caveat."}
 {"id": "SQ-10", "routes": ["data"], "why": "Forecast request; the no-fabricated-numbers rule lives in the data module (and the core)."}
 {"id": "SQ-11", "routes": ["data"], "why": "Revenue by category from the sales tool."}

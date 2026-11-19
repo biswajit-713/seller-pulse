@@ -33,7 +33,7 @@ string stays verbatim and the pasted review lives in `query_context`.
 
 The remaining twenty extend into cases the six leave untested:
 
-- **Tools / analytics** — `SQ-08` (metric ambiguity: units vs revenue), `SQ-09` (partial
+- **Tools / analytics** — `SQ-08` (metric ambiguity: no metric given, revenue default must be named), `SQ-09` (partial
   month), `SQ-11` (category aggregation), `SQ-17` (no data for the requested day),
   `SQ-26` (slow movers holding stock).
 - **Inventory + policy** — `SQ-07` (zero stock, still Active), `SQ-21` (order issues

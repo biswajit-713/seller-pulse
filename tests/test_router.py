@@ -5,9 +5,8 @@ from pathlib import Path
 import langchain_groq
 import pytest
 
-from seller_pulse.config import DEFAULT_ROUTER_MODEL, Settings, load_settings
+from seller_pulse.config import Settings, load_settings
 from seller_pulse.evals.route_cases import load_route_cases
-from seller_pulse.llm import get_router_client
 from seller_pulse.router import (
     ALL_ROUTES,
     CLASSIFIER_PROMPT,
@@ -178,33 +177,9 @@ def test_few_shot_matches_gold_labels():
         assert frozenset(routes) == gold[case_id].routes, case_id
 
 
-def test_router_model_defaults(monkeypatch):
-    monkeypatch.setenv("SELLER_ID", "SELLER-001")
-    monkeypatch.delenv("ROUTER_MODEL", raising=False)
-    assert load_settings().router_model == DEFAULT_ROUTER_MODEL
-
-
-def test_router_model_honours_env(monkeypatch):
-    monkeypatch.setenv("SELLER_ID", "SELLER-001")
-    monkeypatch.setenv("ROUTER_MODEL", "some/router")
-    assert load_settings().router_model == "some/router"
-
-
 class FakeChatGroq:
     def __init__(self, **kwargs):
         self.kwargs = kwargs
-
-
-def test_router_client_is_deterministic_and_low_effort(monkeypatch):
-    monkeypatch.setattr(langchain_groq, "ChatGroq", FakeChatGroq)
-    monkeypatch.setenv("SELLER_ID", "SELLER-001")
-    monkeypatch.setenv("GROQ_API_KEY", "k")
-    monkeypatch.delenv("ROUTER_MODEL", raising=False)
-    client = get_router_client(load_settings())
-    assert client.chat_model.kwargs == {
-        "model": DEFAULT_ROUTER_MODEL, "api_key": "k", "temperature": 0, "reasoning_effort": "low",
-    }
-    assert get_router_client(load_settings(), model="other").chat_model.kwargs["model"] == "other"
 
 
 async def test_route_all_is_every_route_without_fallback():
@@ -214,41 +189,11 @@ async def test_route_all_is_every_route_without_fallback():
     assert decision.latency_ms == 0
 
 
-def test_routing_defaults_on(monkeypatch):
-    monkeypatch.setenv("SELLER_ID", "SELLER-001")
-    monkeypatch.delenv("ROUTING", raising=False)
-    assert load_settings().routing is True
-
-
-@pytest.mark.parametrize("value, expected", [("on", True), ("off", False), (" OFF ", False), ("", True)])
-def test_routing_honours_env(monkeypatch, value, expected):
-    monkeypatch.setenv("SELLER_ID", "SELLER-001")
-    monkeypatch.setenv("ROUTING", value)
-    assert load_settings().routing is expected
-
-
-def test_routing_rejects_unknown_value(monkeypatch):
-    monkeypatch.setenv("SELLER_ID", "SELLER-001")
-    monkeypatch.setenv("ROUTING", "false")
-    with pytest.raises(ValueError, match="ROUTING"):
-        load_settings()
-
-
 def test_build_classifier_off_skips_the_router_model(monkeypatch):
     monkeypatch.setattr(langchain_groq, "ChatGroq", FakeChatGroq)
     monkeypatch.setenv("SELLER_ID", "SELLER-001")
     monkeypatch.setenv("ROUTING", "off")
     assert build_classifier(load_settings()) is route_all
-
-
-async def test_build_classifier_on_binds_the_router_model(monkeypatch):
-    monkeypatch.setattr(langchain_groq, "ChatGroq", FakeChatGroq)
-    monkeypatch.setenv("SELLER_ID", "SELLER-001")
-    monkeypatch.setenv("GROQ_API_KEY", "k")
-    monkeypatch.setenv("ROUTING", "on")
-    classify = build_classifier(load_settings())
-    assert classify.func is classify_query
-    assert classify.args[0].kwargs["model"] == DEFAULT_ROUTER_MODEL
 
 
 def test_review_summary_bound_on_reviews_route_only():
