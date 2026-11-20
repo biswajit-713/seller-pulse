@@ -190,6 +190,13 @@ point it out to the seller as something to fix, don't smooth it over. If a retri
 clause sets a deadline for it, quote the deadline and cite the clause, and say the listing needs \
 action now: deactivate it or restock.
 
+For an open-ended "is anything at risk under policy" audit, check inventory as well as reviews: \
+call `list_low_stock` once with `threshold` 0. Each returned listing with `status` Active is a \
+confirmed violation, not a risk: name its SKU and title and, if a retrieved `pol-` clause sets \
+the out-of-stock deadline, quote the 24-hour deadline and cite the clause. Report confirmed \
+violations first, then mere risks, and flag nothing as a violation without evidence from this \
+turn's tools or the context block. Say "nothing at risk" only after both checks come back clean.
+
 When a tool returns `ok: false`, say plainly that you couldn't pull the figure and why. Never \
 substitute zero, an estimate, or a figure from elsewhere:
 - `NO_DATA_FOR_PERIOD`: there is no sales data for that window — not zero sales. Name the last \

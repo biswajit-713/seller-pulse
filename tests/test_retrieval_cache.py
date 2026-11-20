@@ -2,7 +2,7 @@ import logging
 
 from seller_pulse.cache import CacheStats, MemoryCache
 from seller_pulse.rag import store
-from seller_pulse.rag.retrieval import PolicyStore, _query_args
+from seller_pulse.rag.retrieval import POLICY_K, PolicyStore, _query_args
 from seller_pulse.rag.store import cached_embedder
 
 
@@ -40,6 +40,6 @@ def test_stores_pass_embedding_to_chroma(monkeypatch):
     fake = _FakeCollection()
     monkeypatch.setattr("seller_pulse.rag.retrieval.policy_collection", lambda c: fake)
     PolicyStore(object(), embed=lambda t: [0.5]).search("q")
-    assert fake.kwargs == {"query_embeddings": [[0.5]], "n_results": 2}
+    assert fake.kwargs == {"query_embeddings": [[0.5]], "n_results": POLICY_K}
     PolicyStore(object()).search("q")
-    assert fake.kwargs == {"query_texts": ["q"], "n_results": 2}
+    assert fake.kwargs == {"query_texts": ["q"], "n_results": POLICY_K}

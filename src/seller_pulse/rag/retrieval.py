@@ -61,7 +61,7 @@ if TYPE_CHECKING:
     from seller_pulse.config import Settings
     from seller_pulse.rag.stats import ReviewStats
 
-POLICY_K = 2
+POLICY_K = 5
 REVIEW_K = 6
 LOW_RATING = 2
 
