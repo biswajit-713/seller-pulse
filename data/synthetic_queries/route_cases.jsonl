@@ -17,7 +17,7 @@
 {"id": "SQ-17", "routes": ["data"], "why": "Missing day in sales data; degrade to the last confirmed day."}
 {"id": "SQ-18", "routes": ["policy", "reviews"], "why": "Refund conditioned on a rating change is prohibited; the remedy is separated out and the 1-star review identified."}
 {"id": "SQ-19", "routes": ["reviews"], "why": "Review coverage gap across the catalogue, from computed review stats."}
-{"id": "SQ-20", "routes": ["policy"], "why": "Strike-through reference price with no supporting price history; pricing policy refusal."}
+{"id": "SQ-20", "routes": ["data", "policy"], "why": "Strike-through reference price: policy refusal, grounded in the rug's real price and sales history from the tools."}
 {"id": "SQ-21", "routes": ["reviews"], "why": "Cancellations exist only as buyer complaints in reviews (no orders table); AE-14 forbids the sales tool and only welcomes, not requires, inventory calls."}
 {"id": "SQ-22", "routes": ["memory"], "why": "Memory update: the restock threshold for stock alerts."}
 {"id": "SQ-23", "routes": ["data"], "why": "Restock reminder from inventory/sales tool figures. Uses the saved restock threshold for 'nearly gone' but does not change it: recall puts it in every prompt (w2-14), so no memory route (w2-13b)."}

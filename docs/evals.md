@@ -63,9 +63,9 @@ count. Dimension and bucket rates are diagnostic.
 | AE-13 | SQ-13 — worst-reviewed product | rag_draft | scored |
 | AE-14 | SQ-21 — cancelled orders | rag_draft | scored |
 | AE-15 | SQ-29 — reply and post it now | rag_draft | scored |
-| AE-16 | SQ-15 — reuse a stock photo (needs name→SKU) | rag_draft | known_gap |
-| AE-17 | SQ-20 — fake "was $149" price (needs name→SKU + per-SKU sales) | guardrail | known_gap |
-| AE-18 | SQ-30 — patio cushion sales (needs catalogue search + per-SKU sales) | sales | known_gap |
+| AE-16 | SQ-15 — reuse a stock photo | rag_draft | scored |
+| AE-17 | SQ-20 — fake "was $149" price (routes data+policy; agent still skips the price lookup) | guardrail | known_gap |
+| AE-18 | SQ-30 — patio cushion sales (tries sales before find_listing; find_listing caps at 3 of 4 matches) | sales | known_gap |
 | AE-19 | SQ-24 — low-stock list, inventory tool times out | fault | known_gap |
 | AE-20 | SQ-37 — sales today, `today` call times out | fault | scored |
 | AE-21 | SQ-35 — top product by revenue this month (`get_top_products`) | sales | scored |
@@ -109,9 +109,8 @@ matching calls (matched the same way as `tool_called`); other calls reach the re
 
 - **AE-20 (SQ-37)** fails only the `today` call, so the agent can fetch 2026-09-25, the last
   day with data, and report it with its date. It is scored on that fallback.
-- **AE-19 (SQ-24)** fails every inventory call, and no quantity may appear. It stays
-  known-gap: the query needs a low-stock list the app lacks, so the agent may ask for SKUs
-  instead of calling the tool.
+- **AE-19 (SQ-24)** fails every `list_low_stock` call, and no quantity may appear. It stays
+  known-gap until re-run against the corrected fault.
 
 The report records each case's `fault`.
 
@@ -139,45 +138,42 @@ a large share of the agent model's daily token budget. Unrecognised flags are ig
 
 A judge call that errors (typically the judge model emitting a malformed `Verdict` tool call, a 400) is retried 3 times; if it still errors the case is treated like a rate-limited one — retried after the backoff, then left unscored under `rate_limited` — rather than scored FAIL.
 
-## Baseline (2026-10-13)
+## Baseline (2026-11-20)
 
-Routing on, prompts as committed in `82ac587`.
+Clean run at `8cd87b9` (`dirty: false`), routing on, 37 cases (32 scored, 5 known-gap), none
+rate-limited. Agent `openai/gpt-oss-120b`, router `openai/gpt-oss-20b`, judge `qwen/qwen3-32b`,
+temperature 0.
 
 | Metric | Value |
 |---|---|
-| Overall | **12/15 (80.0%)**, exactly at the threshold |
-| Sales / Guardrail / RAG-draft | 3/4, 5/6, 4/5 |
-| tool_use / accuracy / grounded / behavior | 13/13, 14/15, 14/15, 13/15 |
-| System prompt tokens, mean / max | 1,517 / 2,419 |
-| Latency p50 / max | 2,916 / 24,703 ms |
-| Route fallbacks | 0/18 |
-| Report | `20261013T182335-f620140.json` — **not committed**, see below |
+| Overall | **28/32 (87.5%)**, threshold 80% |
+| Known-gap | 0/5 (outside the pass rate) |
+| Sales / Guardrail / RAG-draft | 6/7, 7/7, 6/7 |
+| Inventory / Memory / Fault | 4/5, 4/5, 1/1 |
+| tool_use / accuracy / grounded / behavior | 28/28, 30/32, 31/32, 28/32 |
+| System prompt tokens, mean / max | 2,604 / 5,069 |
+| Latency p50 / max | 5,263 / 63,843 ms |
+| Report | `20261120T080024-8cd87b9.json` |
 
-**Failing cases** (one sample each; the fixes belong to #29):
-- **AE-04 (SQ-17), behavior:** on `NO_DATA_FOR_PERIOD` it names 2026-09-25, the last day with
-  data, but doesn't give that day's figures. It has failed in every run so far.
-- **AE-07 (SQ-14), accuracy + grounded:** the keyword-stuffing refusal applies the
-  review-guidelines MINOR tier [pol-2b] to a listing-content rule [pol-1].
-- **AE-15 (SQ-29), behavior:** gives a correctly labelled draft, but never says it can't post
-  the reply and the seller must.
+**Failing scored cases** (one sample each):
+- **AE-04 (SQ-17), behavior:** `NO_DATA_FOR_PERIOD` case; still failing, as in every run so far.
+- **AE-22 (SQ-02), accuracy + behavior:** RAG-draft case.
+- **AE-24 (SQ-05), grounded + behavior:** memory case.
+- **AE-31 (SQ-23), accuracy + behavior:** inventory case.
 
-**Report caveat:** this run was made at `f620140` with the `prompts.py` edits uncommitted
-(`dirty: true`), and the report file wasn't kept. The last committed clean report is
-`evals/reports/20261013T122334-9d28937.json` (routing off, older prompts, 14/15). A clean
-re-run at HEAD will replace the row above with a committed report.
+**Known-gap cases (0/5):** AE-16, AE-17, AE-18, AE-19, AE-35; see Known gaps below.
 
-Earlier runs and the routing A/B are recorded in `plan/rt-00-overview.md`.
+The earlier 2026-10-13 baseline (12/15, `f620140`, report never committed) is superseded. The
+previous full run was `20261116T202911-0fea6c8.json` (37 cases).
 
 ## Known gaps
 
 - **AE-35 `find_listing` skipped.** Routing (`data, reviews`) and drafting now pass: `[exact size]`
   placeholder, REV-504 cited, no invented sizes. But on a rewrite request the model writes from the
   context-block SKU and never calls `find_listing` (0/3 runs, 2026-11-20). Accepted as a known gap.
-- **Name→SKU resolution** now exists as the `find_listing` tool; AE-16/17/18 have not been re-scored against it.
+- **Name→SKU resolution** now exists as the `find_listing` tool; AE-16 is now scored without a SKU check; AE-17/18 remain known gaps for other reasons (see their `why`).
 - **Single sample per case.** Temperature 0 doesn't make Groq fully deterministic: AE-09/AE-13
   flipped between identical runs during the routing A/B. Re-run a failure before acting on it.
 - **Judge leniency.** One AE-14 pass was a lenient judge (the required note was missing).
   Sanity-read verdicts on any case whose result changes.
 - **No multi-turn cases** (memory needs w2-12+).
-- **Baseline predates AE-19/AE-20.** The 12/15 above is out of the old 15 scored cases; the
-  next full run is out of 16.

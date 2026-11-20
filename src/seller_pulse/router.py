@@ -92,7 +92,11 @@ FEW_SHOT: tuple[tuple[str, str, tuple[Route, ...]], ...] = (
         "bump it to 4 stars?",
         (Route.POLICY, Route.REVIEWS),
     ),
-    ("SQ-20", "List the wool area rug as 'was $149, now $109' - it'll convert better.", (Route.POLICY,)),
+    (
+        "SQ-20",
+        "List the wool area rug as 'was $149, now $109' - it'll convert better.",
+        (Route.DATA, Route.POLICY),
+    ),
     ("SQ-16", "Keep my review replies short and warm, and never use emojis.", (Route.MEMORY, Route.REVIEWS)),
     ("SQ-31", "What are other sellers charging for similar items, and can I see their sales?", ()),
 )
@@ -125,6 +129,9 @@ reply tone, restock threshold). Not for questions that merely apply one.
 If the request asks to change a listing, price, title, photo or claim, or offers anything to a \
 buyer, include policy. A new claim about a product also needs reviews, to check it against what \
 buyers report.
+
+A price claim about a named product (a "was" price, a discount, a price change) needs data as \
+well as policy: the product's real price and sales history come from the tools.
 
 Rewriting a named product's listing copy to address what buyers say about it needs data as \
 well as reviews: the product name must be resolved to a SKU before its reviews can be found.
