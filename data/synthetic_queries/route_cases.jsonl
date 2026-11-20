@@ -29,7 +29,7 @@
 {"id": "SQ-29", "routes": ["reviews"], "why": "Review reply draft; the refusal to post is the draft-only rule, not a marketplace policy."}
 {"id": "SQ-30", "routes": ["data"], "why": "Sales question about an ambiguous product name matching four listings; must not pick one silently or pass off store-wide figures."}
 {"id": "SQ-31", "routes": [], "why": "Out of scope (other sellers' data); the core's can't-confirm rule covers it alone."}
-{"id": "SQ-32", "routes": ["reviews"], "why": "Listing description rewrite driven by a size-complaint review; draft awaiting approval."}
+{"id": "SQ-32", "routes": ["data", "reviews"], "why": "Listing description rewrite driven by a size-complaint review; draft awaiting approval. Ambiguous product name needs find_listing (data), like SQ-02."}
 {"id": "SQ-33", "routes": ["memory"], "why": "Memory read: list the saved preferences."}
 {"id": "SQ-34", "routes": ["data"], "why": "Week-over-week comparison from the sales tool."}
 {"id": "SQ-35", "routes": ["data"], "why": "Top product by revenue this month from the sales tool."}

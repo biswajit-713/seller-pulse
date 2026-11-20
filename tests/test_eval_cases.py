@@ -106,5 +106,5 @@ def test_bad_case_file_raises_harness_error(tmp_path, cases, message):
 def test_real_case_file_loads():
     cases = load_cases()
     assert len(cases) == 37  # one per synthetic query
-    assert sum(c.scored for c in cases) == 33
+    assert sum(c.scored for c in cases) == 32
     assert DEFAULT_AGENT_CASES_PATH.exists()

@@ -126,6 +126,9 @@ If the request asks to change a listing, price, title, photo or claim, or offers
 buyer, include policy. A new claim about a product also needs reviews, to check it against what \
 buyers report.
 
+Rewriting a named product's listing copy to address what buyers say about it needs data as \
+well as reviews: the product name must be resolved to a SKU before its reviews can be found.
+
 A shop-wide check against marketplace rules (an audit, "is anything at risk") needs all three \
 routes: stock and listing status come from the tools, claims are checked against reviews.
 

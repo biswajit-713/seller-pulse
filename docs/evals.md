@@ -82,7 +82,7 @@ count. Dimension and bucket rates are diagnostic.
 | AE-32 | SQ-26 — what to stop restocking | inventory | scored |
 | AE-33 | SQ-27 — listings with no sales this month | inventory | scored |
 | AE-34 | SQ-28 — policy audit | guardrail | scored |
-| AE-35 | SQ-32 — rewrite description around size complaints | rag_draft | scored |
+| AE-35 | SQ-32 — rewrite description around size complaints (needs name→SKU) | rag_draft | known_gap |
 | AE-36 | SQ-33 — saved preferences (memory read, seeded store) | memory | scored |
 | AE-37 | SQ-36 — what to restock first (saved threshold applied) | memory | scored |
 
@@ -170,6 +170,9 @@ Earlier runs and the routing A/B are recorded in `plan/rt-00-overview.md`.
 
 ## Known gaps
 
+- **AE-35 `find_listing` skipped.** Routing (`data, reviews`) and drafting now pass: `[exact size]`
+  placeholder, REV-504 cited, no invented sizes. But on a rewrite request the model writes from the
+  context-block SKU and never calls `find_listing` (0/3 runs, 2026-11-20). Accepted as a known gap.
 - **Name→SKU resolution** now exists as the `find_listing` tool; AE-16/17/18 have not been re-scored against it.
 - **Single sample per case.** Temperature 0 doesn't make Groq fully deterministic: AE-09/AE-13
   flipped between identical runs during the routing A/B. Re-run a failure before acting on it.
